@@ -1259,10 +1259,12 @@ function Container:_makeKeyPicker(id, info, linkedToggle)
 			end
 			badge:FindFirstChildOfClass("UIStroke").Color = th("Outline")
 		else
+			local badgeBg = th("Badge")
+			local luminance = 0.299 * badgeBg.R + 0.587 * badgeBg.G + 0.114 * badgeBg.B
 			badgeText.Text = formatKey(self.Value)
-			badgeText.TextColor3 = th("Dark")
+			badgeText.TextColor3 = luminance > 0.5 and th("Dark") or th("Text")
 			badge.BackgroundTransparency = 0
-			badge.BackgroundColor3 = th("Badge")
+			badge.BackgroundColor3 = badgeBg
 			badge.Size = UDim2.fromOffset(badgeWidth(self.Value), 18)
 			local s = badge:FindFirstChildOfClass("UIStroke")
 			if s then
@@ -2857,6 +2859,7 @@ function Library:SaveTheme()
 	local data = {
 		preset = self._activePreset,
 		accent = { r = to255(theme.Accent.R), g = to255(theme.Accent.G), b = to255(theme.Accent.B) },
+		badge = { r = to255(theme.Badge.R), g = to255(theme.Badge.G), b = to255(theme.Badge.B) },
 		font = theme.Font.Name,
 		textScale = theme.TextScale,
 		windowTransparency = theme.WindowTransparency,
@@ -2896,6 +2899,9 @@ function Library:LoadTheme()
 	if type(data.accent) == "table" then
 		partial.Accent = Color3.fromRGB(data.accent.r or 0, data.accent.g or 0, data.accent.b or 0)
 		partial.AccentDark = Color3.new(partial.Accent.R * 0.7, partial.Accent.G * 0.7, partial.Accent.B * 0.7)
+	end
+	if type(data.badge) == "table" then
+		partial.Badge = Color3.fromRGB(data.badge.r or 0, data.badge.g or 0, data.badge.b or 0)
 	end
 	if data.font and Enum.Font[data.font] then
 		partial.Font = Enum.Font[data.font]
@@ -2955,6 +2961,9 @@ function Library:AddThemeModule(tab, opts)
 				if Options.UI_Accent then
 					Options.UI_Accent:SetValue(Library.Theme.Accent)
 				end
+				if Options.UI_Badge then
+					Options.UI_Badge:SetValue(Library.Theme.Badge)
+				end
 			end
 		end,
 	})
@@ -2968,6 +2977,15 @@ function Library:AddThemeModule(tab, opts)
 				Accent = color,
 				AccentDark = Color3.new(color.R * 0.7, color.G * 0.7, color.B * 0.7),
 			})
+		end,
+	})
+
+	module:AddColorPicker("UI_Badge", {
+		Text = "Keybind Badge",
+		Default = self.Theme.Badge,
+		Callback = function(color)
+			Library._activePreset = nil
+			Library:ApplyTheme({ Badge = color })
 		end,
 	})
 
@@ -2993,9 +3011,49 @@ function Library:AddThemeModule(tab, opts)
 		end,
 	})
 
-	module:AddInput("UI_BackgroundImage", {
+	-- scan <themeFolder>/images and UAPB/backgrounds for selectable images
+	local imageMap = {}
+	local imageValues = { "None" }
+	do
+		local f = fs()
+		if f.listfiles then
+			for _, dir in next, { self._themeFolder .. "/images", "UAPB/backgrounds" } do
+				local ok, names = pcall(f.listfiles, dir)
+				if ok and type(names) == "table" then
+					for _, path in next, names do
+						path = tostring(path)
+						if path:lower():match("%.%a+$") and path:lower():match("%.(png|jpe?g|bmp|webp)$") then
+							local name = path:match("[^\\/]+$") or path
+							if not imageMap[name] then
+								table.insert(imageValues, name)
+							end
+							imageMap[name] = path
+						end
+					end
+				end
+			end
+		end
+	end
+
+	local imageDrop = module:AddDropdown("UI_BackgroundImage", {
 		Text = "Background Image",
-		Placeholder = "rbxassetid://… or workspace file",
+		Values = imageValues,
+		Default = "None",
+		AllowNull = true,
+		Callback = function(name)
+			if not name or name == "None" then
+				Library:SetBackground({ Image = "" })
+			elseif imageMap[name] then
+				Library:SetBackground({ Image = imageMap[name] })
+			end
+			Library:SaveTheme()
+		end,
+	})
+
+	module:AddInput("UI_BackgroundImageCustom", {
+		Text = "Custom Image",
+		Placeholder = "rbxassetid://… or file path",
+		Finished = true,
 		Callback = function(value)
 			Library:SetBackground({ Image = value })
 			Library:SaveTheme()
@@ -3074,6 +3132,9 @@ function Library:AddThemeModule(tab, opts)
 		if Options.UI_Accent then
 			Options.UI_Accent:SetValue(Library.Theme.Accent)
 		end
+		if Options.UI_Badge then
+			Options.UI_Badge:SetValue(Library.Theme.Badge)
+		end
 		if Options.UI_Preset then
 			Options.UI_Preset:SetValue("Dark")
 		end
@@ -3088,6 +3149,9 @@ function Library:AddThemeModule(tab, opts)
 	if Options.UI_Accent then
 		Options.UI_Accent:SetValue(self.Theme.Accent)
 	end
+	if Options.UI_Badge then
+		Options.UI_Badge:SetValue(self.Theme.Badge)
+	end
 	if Options.UI_Font then
 		Options.UI_Font:SetValue(self.Theme.Font.Name)
 	end
@@ -3095,7 +3159,19 @@ function Library:AddThemeModule(tab, opts)
 		Options.UI_TextScale:SetValue(self.Theme.TextScale)
 	end
 	if Options.UI_BackgroundImage then
-		Options.UI_BackgroundImage:SetValue(self.Theme.BackgroundImage or "")
+		local current = self.Theme.BackgroundImage or ""
+		local selected = "None"
+		for name, path in next, imageMap do
+			if path == current then
+				selected = name
+				break
+			end
+		end
+		if selected ~= "None" or current == "" then
+			Options.UI_BackgroundImage:SetValue(selected)
+		elseif Options.UI_BackgroundImageCustom then
+			Options.UI_BackgroundImageCustom:SetValue(current)
+		end
 	end
 	if Options.UI_BackgroundTransparency then
 		Options.UI_BackgroundTransparency:SetValue(self.Theme.BackgroundImageTransparency)
