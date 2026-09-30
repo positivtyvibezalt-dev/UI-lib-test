@@ -320,8 +320,10 @@ local function stroke(parent, color, thickness)
 	return create("UIStroke", { Color = color or OUTLINE, Thickness = thickness or 1, Parent = parent })
 end
 
+local CORNER_RADIUS = 1 -- global cap; raise for rounder corners
+
 local function corner(parent, radius)
-	return create("UICorner", { CornerRadius = UDim.new(0, radius or 2), Parent = parent })
+	return create("UICorner", { CornerRadius = UDim.new(0, math.min(radius or CORNER_RADIUS, CORNER_RADIUS)), Parent = parent })
 end
 
 local function padding(parent, left, right, top, bottom)
@@ -1182,7 +1184,7 @@ local function makeBadge()
 		Text = "",
 	})
 	corner(badge, 2)
-	create("Frame", {
+	local pip = create("Frame", {
 		BackgroundColor3 = ACCENT,
 		BorderSizePixel = 0,
 		Position = UDim2.fromOffset(-8, 6),
@@ -1196,7 +1198,7 @@ local function makeBadge()
 		TextSize = 10,
 		TextXAlignment = Enum.TextXAlignment.Center,
 	})
-	return badge, badgeText
+	return badge, badgeText, pip
 end
 
 ---Fully unregister a keypicker (its badge may be destroyed).
@@ -1236,11 +1238,12 @@ function Container:_makeKeyPicker(id, info, linkedToggle)
 	control.Held = false
 	table.insert(Library.KeyPickers, control)
 
-	local badge, badgeText = makeBadge()
+	local badge, badgeText, pip = makeBadge()
 	control.Badge = badge
 	control.BadgeText = badgeText
 	function control:Display()
 		local empty = self.Value == nil or self.Value == "None" or self.Value == "N/A"
+		pip.Visible = not (self.Auto and empty)
 		if self.Auto and empty then
 			badgeText.Text = "+"
 			badgeText.TextColor3 = th("Muted")
@@ -1921,8 +1924,37 @@ function Library:CreateWindow(config)
 		Parent = outer,
 	}, "Panel")
 	corner(nav, 2)
-	padding(nav, 6, 6, 8, 8)
-	list(nav, 2)
+
+	-- sliding accent indicator; created before the item list so items render above it
+	local navIndicator = create("Frame", {
+		BackgroundColor3 = ACCENT,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(6, 8),
+		Size = UDim2.new(1, -12, 0, 36),
+		Visible = false,
+		Parent = nav,
+	})
+	corner(navIndicator, 2)
+	local navStripes = {}
+	for i = 0, 2 do
+		table.insert(navStripes, create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = DARK,
+			BorderSizePixel = 0,
+			Position = UDim2.new(1, -20 + i * 7, 1, -8),
+			Rotation = 45,
+			Size = UDim2.fromOffset(10, 2),
+			Parent = navIndicator,
+		}))
+	end
+
+	local navList = create("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(6, 8),
+		Size = UDim2.new(1, -12, 1, -16),
+		Parent = nav,
+	})
+	list(navList, 2)
 
 	local moduleColumn = create("ScrollingFrame", {
 		BackgroundColor3 = PANEL,
@@ -2055,7 +2087,7 @@ function Library:CreateWindow(config)
 			BorderSizePixel = 0,
 			Size = UDim2.new(1, 0, 0, 36),
 			Text = "",
-			Parent = nav,
+			Parent = navList,
 		})
 		corner(item, 2)
 		if opts.Icon then
@@ -2074,7 +2106,7 @@ function Library:CreateWindow(config)
 				Size = UDim2.fromOffset(6, 6),
 				Parent = item,
 			})
-			stroke(glyph, ACCENT, 1)
+			tab.GlyphStroke = stroke(glyph, ACCENT, 1)
 		end
 		local nameLabel = mklabel(item, {
 			Position = UDim2.fromOffset(34, 0),
@@ -2083,33 +2115,22 @@ function Library:CreateWindow(config)
 			TextColor3 = MUTED,
 			TextSize = 12,
 		})
-		local stripes = {}
-		for i = 0, 2 do
-			table.insert(stripes, create("Frame", {
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = DARK,
-				BorderSizePixel = 0,
-				Position = UDim2.new(1, -20 + i * 7, 1, -8),
-				Rotation = 45,
-				Size = UDim2.fromOffset(10, 2),
-				Visible = false,
-				Parent = item,
-			}))
-		end
 
 		function tab:Show()
 			for _, other in next, window.Tabs do
-				tween(other.Item, 0.12, { BackgroundTransparency = 1 })
 				tween(other.NameLabel, 0.12, { TextColor3 = th("Muted") })
-				for _, s in next, other.Stripes do
-					s.Visible = false
+				if other.GlyphStroke then
+					tween(other.GlyphStroke, 0.12, { Color = th("Accent") })
 				end
 			end
-			item.BackgroundColor3 = th("Accent")
-			tween(item, 0.12, { BackgroundTransparency = 0 })
 			tween(nameLabel, 0.12, { TextColor3 = th("Dark") })
-			for _, s in next, stripes do
-				s.Visible = true
+			if tab.GlyphStroke then
+				tween(tab.GlyphStroke, 0.12, { Color = th("Dark") })
+			end
+			local index = table.find(window.Tabs, tab) or 1
+			navIndicator.Visible = true
+			tween(navIndicator, 0.18, { Position = UDim2.fromOffset(6, 8 + (index - 1) * 38) }, Enum.EasingStyle.Quart)
+			for _, s in next, navStripes do
 				s.BackgroundColor3 = th("Dark")
 			end
 			window.ActiveTab = tab
@@ -2148,7 +2169,6 @@ function Library:CreateWindow(config)
 		end))
 		tab.Item = item
 		tab.NameLabel = nameLabel
-		tab.Stripes = stripes
 
 		function tab:AddModule(id, info)
 			info = info or {}
