@@ -268,7 +268,7 @@ local function tween(object, seconds, props, style)
 	end
 	local t = TweenService:Create(
 		object,
-		TweenInfo.new(seconds or 0.12, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		TweenInfo.new(seconds or 0.12, style or Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
 		props
 	)
 	t:Play()
@@ -771,6 +771,8 @@ function Container:AddLabel(text)
 			})
 		end
 		local picker = self.Parent:_makeKeyPicker(keyId, info or {}, nil)
+		picker.Auto = true
+		picker:Display()
 		picker.Badge.Parent = area
 		picker.Badge.Position = UDim2.new(1, 0, 0, 2)
 		return picker
@@ -878,6 +880,8 @@ function Container:AddToggle(id, info)
 			self.AutoPicker = nil
 		end
 		local picker = self.Parent:_makeKeyPicker(keyId, keyInfo or {}, self)
+		picker.Auto = true
+		picker:Display()
 		picker.Badge.Parent = area
 		picker.Badge.Position = UDim2.new(1, -24, 0, 4)
 		return picker
@@ -1247,12 +1251,13 @@ function Container:_makeKeyPicker(id, info, linkedToggle)
 		if self.Auto and empty then
 			badgeText.Text = "+"
 			badgeText.TextColor3 = th("Muted")
-			badge.BackgroundTransparency = 1
-			badge.Size = UDim2.fromOffset(24, 18)
+			badge.BackgroundTransparency = 0
+			badge.BackgroundColor3 = th("Field")
+			badge.Size = UDim2.fromOffset(22, 18)
 			if not badge:FindFirstChildOfClass("UIStroke") then
 				stroke(badge, DIM, 1)
 			end
-			badge:FindFirstChildOfClass("UIStroke").Color = th("Dim")
+			badge:FindFirstChildOfClass("UIStroke").Color = th("Outline")
 		else
 			badgeText.Text = formatKey(self.Value)
 			badgeText.TextColor3 = th("Dark")
@@ -1269,6 +1274,15 @@ function Container:_makeKeyPicker(id, info, linkedToggle)
 	track(badge.MouseButton1Click:Connect(function()
 		badgeText.Text = "..."
 		control.Capturing = true
+	end))
+	track(badge.MouseEnter:Connect(function()
+		local s = badge:FindFirstChildOfClass("UIStroke") or stroke(badge, DIM, 1)
+		s.Color = th("Accent")
+	end))
+	track(badge.MouseLeave:Connect(function()
+		if not control.Capturing then
+			control:Display()
+		end
 	end))
 	function control:GetState()
 		if self.Mode == "Hold" then
@@ -1309,6 +1323,8 @@ function Container:AddKeyPicker(id, info)
 	info = info or {}
 	local picker = self:_makeKeyPicker(id, info, nil)
 	if info.Text then
+		picker.Auto = true
+		picker:Display()
 		local _, area = self:_card(24, info.Text, info.Tooltip or info.Description)
 		picker.Badge.Parent = area
 		picker.Badge.Position = UDim2.new(1, 0, 0, 3)
@@ -1703,7 +1719,7 @@ function Library:Toggle()
 				finalSize.X.Scale, math.floor(finalSize.X.Offset * 0.94),
 				finalSize.Y.Scale, math.floor(finalSize.Y.Offset * 0.94)
 			)
-			tween(outer, 0.18, { Size = finalSize }, Enum.EasingStyle.Quart)
+			tween(outer, 0.15, { Size = finalSize }, Enum.EasingStyle.Exponential)
 		else
 			local t = tween(outer, 0.1, {
 				Size = UDim2.new(
@@ -2129,7 +2145,7 @@ function Library:CreateWindow(config)
 			end
 			local index = table.find(window.Tabs, tab) or 1
 			navIndicator.Visible = true
-			tween(navIndicator, 0.18, { Position = UDim2.fromOffset(6, 8 + (index - 1) * 38) }, Enum.EasingStyle.Quart)
+			tween(navIndicator, 0.14, { Position = UDim2.fromOffset(6, 8 + (index - 1) * 38) }, Enum.EasingStyle.Exponential)
 			for _, s in next, navStripes do
 				s.BackgroundColor3 = th("Dark")
 			end
@@ -2388,13 +2404,10 @@ function Library:CreateWindow(config)
 				self.AutoPicker = nil
 			end
 			local picker = self:_makeKeyPicker(keyId, keyInfo, toggleable and self or nil)
+			picker.Auto = true -- badge always visible: "+" affordance when unbound
+			picker:Display()
 			picker.Badge.Parent = badgeSlot
 			picker.Badge.Position = UDim2.new(1, 0, 0, 0)
-			local function syncBadge()
-				picker.Badge.Visible = picker.Value ~= "None" and picker.Value ~= "N/A" and picker.Value ~= nil
-			end
-			picker:OnChanged(syncBadge)
-			syncBadge()
 			return picker
 		end
 
@@ -2426,7 +2439,7 @@ function Library:CreateWindow(config)
 		outer.Size.X.Scale, math.floor(outer.Size.X.Offset * 0.94),
 		outer.Size.Y.Scale, math.floor(outer.Size.Y.Offset * 0.94)
 	)
-	tween(outer, 0.18, { Size = self._windowSize }, Enum.EasingStyle.Quart)
+	tween(outer, 0.15, { Size = self._windowSize }, Enum.EasingStyle.Exponential)
 	return window
 end
 
