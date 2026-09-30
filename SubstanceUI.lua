@@ -2379,7 +2379,7 @@ function Library:CreateWindow(config)
 		end
 
 		if toggleable then
-			module:_autoKeybind(id, module.Name, badgeSlot, UDim2.new(1, 0, 0, 0))
+			module:_autoKeybind(module, id, module.Name, badgeSlot, UDim2.new(1, 0, 0, 0))
 		end
 
 		track(card.MouseButton1Click:Connect(function()
