@@ -629,9 +629,9 @@ local function rebuildKeybindList()
 	for _, picker in next, Library.KeyPickers do
 		local bound = picker.Value and picker.Value ~= "None" and picker.Value ~= "N/A"
 		local isFeature = picker.LinkedToggle ~= nil or picker.ShowInList == true
-		if bound and isFeature then
+		local on = picker.LinkedToggle and picker.LinkedToggle.Value == true
+		if bound and isFeature and (not Library.KeybindListActiveOnly or on) then
 			shown = shown + 1
-			local on = picker.LinkedToggle and picker.LinkedToggle.Value
 			mklabel(listFrame, {
 				LayoutOrder = shown,
 				Size = UDim2.new(1, 0, 0, 16),
@@ -1190,13 +1190,6 @@ local function makeBadge()
 		Text = "",
 	})
 	corner(badge, 2)
-	local pip = create("Frame", {
-		BackgroundColor3 = ACCENT,
-		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(-8, 6),
-		Size = UDim2.fromOffset(6, 6),
-		Parent = badge,
-	})
 	local badgeText = mklabel(badge, {
 		Size = UDim2.fromScale(1, 1),
 		Text = "",
@@ -1204,7 +1197,7 @@ local function makeBadge()
 		TextSize = 10,
 		TextXAlignment = Enum.TextXAlignment.Center,
 	})
-	return badge, badgeText, pip
+	return badge, badgeText
 end
 
 ---Fully unregister a keypicker (its badge may be destroyed).
@@ -1238,18 +1231,20 @@ function Container:_makeKeyPicker(id, info, linkedToggle)
 	control.Mode = info.Mode or "Toggle"
 	control.Text = info.Text
 	control.LinkedToggle = linkedToggle
+	if linkedToggle and linkedToggle.OnChanged then
+		linkedToggle:OnChanged(rebuildKeybindList)
+	end
 	control.SyncToggle = info.SyncToggleState == true
 	control.Auto = info.Auto == true
 	control.ShowInList = info.ShowInList == true
 	control.Held = false
 	table.insert(Library.KeyPickers, control)
 
-	local badge, badgeText, pip = makeBadge()
+	local badge, badgeText = makeBadge()
 	control.Badge = badge
 	control.BadgeText = badgeText
 	function control:Display()
 		local empty = self.Value == nil or self.Value == "None" or self.Value == "N/A"
-		pip.Visible = not (self.Auto and empty)
 		if self.Auto and empty then
 			badgeText.Text = "+"
 			badgeText.TextColor3 = th("Muted")
@@ -1815,6 +1810,38 @@ function Library:CreateWindow(config)
 		TextXAlignment = Enum.TextXAlignment.Center,
 	})
 	bold(kbTitle)
+	-- "ON" filter: show only keybinds whose feature is currently enabled
+	local kbFilter = create("TextButton", {
+		AnchorPoint = Vector2.new(1, 0),
+		AutoButtonColor = false,
+		BackgroundTransparency = 1,
+		Position = UDim2.new(1, -8, 0, 0),
+		Size = UDim2.new(0, 34, 1, 0),
+		Text = "",
+		Parent = kbHeader,
+	})
+	local kbFilterBox = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		BackgroundColor3 = DARK,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 0, 0.5, 0),
+		Size = UDim2.fromOffset(8, 8),
+		Parent = kbFilter,
+	})
+	stroke(kbFilterBox, DARK, 1)
+	mklabel(kbFilter, {
+		Position = UDim2.fromOffset(12, 0),
+		Size = UDim2.new(1, -12, 1, 0),
+		Text = "ON",
+		TextColor3 = DARK,
+		TextSize = 9,
+	})
+	track(kbFilter.MouseButton1Click:Connect(function()
+		Library.KeybindListActiveOnly = not Library.KeybindListActiveOnly
+		kbFilterBox.BackgroundTransparency = Library.KeybindListActiveOnly and 0 or 1
+		rebuildKeybindList()
+	end))
 	local kbEntries = create("Frame", {
 		Name = "Entries",
 		AutomaticSize = Enum.AutomaticSize.Y,
@@ -1901,32 +1928,45 @@ function Library:CreateWindow(config)
 		TextSize = 13,
 	})
 	bold(title)
-	mklabel(header, {
+	local meta = create("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundTransparency = 1,
 		Position = UDim2.new(1, -14, 0, 0),
-		Size = UDim2.fromOffset(90, 46),
-		Text = "UID: " .. tostring(config.UID or 0),
-		TextColor3 = MUTED,
-		TextSize = 11,
-		TextXAlignment = Enum.TextXAlignment.Right,
+		Size = UDim2.new(0, 0, 1, 0),
+		Parent = header,
 	})
-	mklabel(header, {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -104, 0, 0),
-		Size = UDim2.fromOffset(70, 46),
-		Text = "[" .. tostring(config.Rank or "DEV") .. "]",
-		TextColor3 = ACCENT,
-		TextSize = 11,
-		TextXAlignment = Enum.TextXAlignment.Right,
+	create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		Padding = UDim.new(0, 12),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Parent = meta,
 	})
-	mklabel(header, {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -174, 0, 0),
-		Size = UDim2.fromOffset(160, 46),
+	mklabel(meta, {
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 1,
+		Size = UDim2.fromOffset(0, 46),
 		Text = tostring(config.User or (localPlayer and localPlayer.Name) or "user"),
 		TextColor3 = TEXT,
 		TextSize = 11,
-		TextXAlignment = Enum.TextXAlignment.Right,
+	})
+	mklabel(meta, {
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 2,
+		Size = UDim2.fromOffset(0, 46),
+		Text = "[" .. tostring(config.Rank or "DEV") .. "]",
+		TextColor3 = ACCENT,
+		TextSize = 11,
+	})
+	mklabel(meta, {
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 3,
+		Size = UDim2.fromOffset(0, 46),
+		Text = "UID: " .. tostring(config.UID or 0),
+		TextColor3 = MUTED,
+		TextSize = 11,
 	})
 	create("Frame", {
 		BackgroundColor3 = OUTLINE,
