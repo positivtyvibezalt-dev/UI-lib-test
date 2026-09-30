@@ -47,17 +47,271 @@ local Library = {
 	RegistryMap = {},
 	Signals = {},
 	KeyPickers = {},
+	ThemeRegistry = {},
+	TitleLabels = {},
+	Controls = {},
 	Unloaded = false,
 }
+
+--------------------------------------------------------------------------------
+-- Theme
+--------------------------------------------------------------------------------
+
+---Font families offered in the Theme module; value = Roblox FontFamily json name.
+Library.Fonts = { "RobotoMono", "Code", "Gotham", "GothamMedium", "SourceSans", "Ubuntu", "Arimo" }
+
+local FONT_FAMILIES = {
+	RobotoMono = "RobotoMono",
+	Code = "Inconsolata",
+	Gotham = "GothamSSm",
+	GothamMedium = "GothamSSm",
+	SourceSans = "SourceSansPro",
+	Ubuntu = "Ubuntu",
+	Arimo = "Arimo",
+}
+
+Library.Theme = {
+	Accent = ACCENT,
+	AccentDark = ACCENT_DARK,
+	Background = BG,
+	Header = HEADER,
+	Panel = PANEL,
+	Card = CARD,
+	Field = FIELD,
+	Outline = OUTLINE,
+	Text = TEXT,
+	Muted = MUTED,
+	Dim = DIM,
+	Dark = DARK,
+	Badge = BADGE,
+	Font = FONT,
+	TextScale = 1,
+	WindowTransparency = 0,
+	PanelTransparency = 0,
+	CardTransparency = 0,
+	FieldTransparency = 0,
+	BackgroundImage = "",
+	BackgroundImageTransparency = 0.6,
+	BackgroundImageBlur = 0,
+	BackgroundDim = 0.4,
+	ScreenBlur = false,
+	BlurSize = 24,
+	Animations = true,
+}
+
+Library.Presets = {
+	Dark = {
+		Accent = ACCENT,
+		AccentDark = ACCENT_DARK,
+		Background = BG,
+		Header = HEADER,
+		Panel = PANEL,
+		Card = CARD,
+		Field = FIELD,
+		Outline = OUTLINE,
+		Text = TEXT,
+		Muted = MUTED,
+		Dim = DIM,
+		Dark = DARK,
+		Badge = BADGE,
+		WindowTransparency = 0,
+		PanelTransparency = 0,
+		CardTransparency = 0,
+		FieldTransparency = 0,
+		ScreenBlur = false,
+	},
+	Glass = {
+		Accent = ACCENT,
+		AccentDark = ACCENT_DARK,
+		Background = BG,
+		Header = HEADER,
+		Panel = PANEL,
+		Card = CARD,
+		Field = FIELD,
+		Outline = OUTLINE,
+		Text = TEXT,
+		Muted = MUTED,
+		Dim = DIM,
+		Dark = DARK,
+		Badge = BADGE,
+		WindowTransparency = 0.4,
+		PanelTransparency = 0.45,
+		CardTransparency = 0.35,
+		FieldTransparency = 0.2,
+		ScreenBlur = true,
+	},
+	Midnight = {
+		Accent = Color3.fromRGB(120, 150, 255),
+		AccentDark = Color3.fromRGB(84, 105, 179),
+		Background = Color3.fromRGB(6, 8, 16),
+		Header = Color3.fromRGB(4, 5, 10),
+		Panel = Color3.fromRGB(10, 12, 22),
+		Card = Color3.fromRGB(14, 17, 30),
+		Field = Color3.fromRGB(5, 6, 12),
+		Outline = Color3.fromRGB(32, 38, 60),
+		Text = Color3.fromRGB(226, 230, 245),
+		Muted = Color3.fromRGB(110, 118, 148),
+		Dim = Color3.fromRGB(66, 72, 95),
+		Dark = Color3.fromRGB(14, 16, 26),
+		Badge = Color3.fromRGB(232, 235, 245),
+		WindowTransparency = 0,
+		PanelTransparency = 0,
+		CardTransparency = 0,
+		FieldTransparency = 0,
+		ScreenBlur = false,
+	},
+	Crimson = {
+		Accent = Color3.fromRGB(230, 50, 70),
+		AccentDark = Color3.fromRGB(161, 35, 49),
+		Background = Color3.fromRGB(12, 6, 8),
+		Header = Color3.fromRGB(7, 3, 5),
+		Panel = Color3.fromRGB(18, 9, 12),
+		Card = Color3.fromRGB(24, 12, 16),
+		Field = Color3.fromRGB(8, 4, 6),
+		Outline = Color3.fromRGB(58, 26, 32),
+		Text = Color3.fromRGB(238, 226, 229),
+		Muted = Color3.fromRGB(150, 108, 118),
+		Dim = Color3.fromRGB(96, 60, 68),
+		Dark = Color3.fromRGB(24, 10, 14),
+		Badge = Color3.fromRGB(245, 232, 235),
+		WindowTransparency = 0,
+		PanelTransparency = 0,
+		CardTransparency = 0,
+		FieldTransparency = 0,
+		ScreenBlur = false,
+	},
+	Emerald = {
+		Accent = Color3.fromRGB(80, 200, 140),
+		AccentDark = Color3.fromRGB(56, 140, 98),
+		Background = Color3.fromRGB(6, 12, 9),
+		Header = Color3.fromRGB(4, 8, 6),
+		Panel = Color3.fromRGB(10, 18, 14),
+		Card = Color3.fromRGB(14, 24, 18),
+		Field = Color3.fromRGB(5, 10, 7),
+		Outline = Color3.fromRGB(30, 56, 42),
+		Text = Color3.fromRGB(226, 240, 232),
+		Muted = Color3.fromRGB(108, 142, 122),
+		Dim = Color3.fromRGB(64, 92, 76),
+		Dark = Color3.fromRGB(14, 24, 18),
+		Badge = Color3.fromRGB(232, 245, 238),
+		WindowTransparency = 0,
+		PanelTransparency = 0,
+		CardTransparency = 0,
+		FieldTransparency = 0,
+		ScreenBlur = false,
+	},
+	Amethyst = {
+		Accent = Color3.fromRGB(170, 110, 255),
+		AccentDark = Color3.fromRGB(119, 77, 179),
+		Background = Color3.fromRGB(10, 6, 14),
+		Header = Color3.fromRGB(6, 4, 9),
+		Panel = Color3.fromRGB(16, 10, 22),
+		Card = Color3.fromRGB(22, 14, 30),
+		Field = Color3.fromRGB(8, 5, 11),
+		Outline = Color3.fromRGB(48, 30, 66),
+		Text = Color3.fromRGB(232, 224, 245),
+		Muted = Color3.fromRGB(128, 112, 155),
+		Dim = Color3.fromRGB(82, 66, 108),
+		Dark = Color3.fromRGB(20, 12, 28),
+		Badge = Color3.fromRGB(240, 232, 250),
+		WindowTransparency = 0,
+		PanelTransparency = 0,
+		CardTransparency = 0,
+		FieldTransparency = 0,
+		ScreenBlur = false,
+	},
+}
+
+---Map a Color3 to its theme role name.
+local COLOR_ROLES = {
+	{ ACCENT, "Accent" },
+	{ ACCENT_DARK, "AccentDark" },
+	{ BG, "Background" },
+	{ HEADER, "Header" },
+	{ PANEL, "Panel" },
+	{ CARD, "Card" },
+	{ FIELD, "Field" },
+	{ OUTLINE, "Outline" },
+	{ TEXT, "Text" },
+	{ MUTED, "Muted" },
+	{ DIM, "Dim" },
+	{ DARK, "Dark" },
+	{ BADGE, "Badge" },
+}
+
+local function roleFor(value)
+	for _, pair in next, COLOR_ROLES do
+		if value == pair[1] then
+			return pair[2]
+		end
+	end
+	return nil
+end
+
+---Register an instance property as theme-driven.
+local function tprop(object, property, role, base)
+	table.insert(Library.ThemeRegistry, { object, property, role, base })
+end
+
+---Read a theme color (live).
+local function th(role)
+	return Library.Theme[role]
+end
+
+---Tween with the animations toggle respected.
+local function tween(object, seconds, props, style)
+	if Library.Theme.Animations == false then
+		for key, value in next, props do
+			object[key] = value
+		end
+		return nil
+	end
+	local t = TweenService:Create(
+		object,
+		TweenInfo.new(seconds or 0.12, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		props
+	)
+	t:Play()
+	return t
+end
 
 --------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------
 
-local function create(class, props)
-	local object = type(class) == "string" and Instance.new(class) or class
+local function assignProps(object, props)
 	for key, value in next, props or {} do
 		object[key] = value
+		if typeof(value) == "Color3" then
+			local role = roleFor(value)
+			if role then
+				object[key] = Library.Theme[role]
+				tprop(object, key, role)
+			end
+		elseif key == "Font" and value == FONT then
+			object.Font = Library.Theme.Font
+			tprop(object, "Font", "Font")
+		elseif key == "TextSize" and type(value) == "number" then
+			object.TextSize = math.max(1, math.floor(value * Library.Theme.TextScale + 0.5))
+			tprop(object, "TextSize", "TextScale", value)
+		end
+	end
+end
+
+local TRANSPARENCY_ROLES = {
+	Window = "WindowTransparency",
+	Header = "PanelTransparency",
+	Panel = "PanelTransparency",
+	Card = "CardTransparency",
+	Field = "FieldTransparency",
+}
+
+local function create(class, props, transparencyRole)
+	local object = type(class) == "string" and Instance.new(class) or class
+	assignProps(object, props)
+	if transparencyRole then
+		object.BackgroundTransparency = Library.Theme[TRANSPARENCY_ROLES[transparencyRole]] or 0
+		tprop(object, "BackgroundTransparency", transparencyRole)
 	end
 	return object
 end
@@ -93,27 +347,27 @@ local function mklabel(parent, props)
 		BackgroundTransparency = 1,
 		Font = FONT,
 		TextColor3 = TEXT,
-		TextSize = 12,
+		TextSize = 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Parent = parent,
 	})
-	for key, value in next, props or {} do
-		object[key] = value
-	end
+	assignProps(object, props)
 	return object
 end
 
 local function bold(object)
-	if BOLD_FONT then
-		local ok = pcall(function()
-			object.FontFace = BOLD_FONT
-		end)
-		if ok then
-			return
-		end
+	local family = FONT_FAMILIES[tostring(Library.Theme.Font.Name)] or "RobotoMono"
+	local ok = pcall(function()
+		object.FontFace = Font.new(
+			"rbxasset://fonts/families/" .. family .. ".json",
+			Enum.FontWeight.Bold
+		)
+	end)
+	if not ok then
+		object.Font = Library.Theme.Font
 	end
-	object.Font = Enum.Font.Code
+	table.insert(Library.TitleLabels, object)
 end
 
 local function track(signal)
@@ -142,6 +396,49 @@ local function addBrackets(parent, color, len, thick)
 	piece(L, T, 0, 0, 1, 0); piece(T, L, 0, 0, 1, 0)
 	piece(L, T, 1, 0, 1, 0); piece(T, L, 1, 0, 1, 0)
 	return frames
+end
+
+---Substance-style checkbox: accent fill + checkmark when on.
+---@return table { Box = TextButton, Set = fn(on, instant) }
+local function makeCheckbox(parent, props)
+	props = props or {}
+	local box = create("TextButton", {
+		AutoButtonColor = false,
+		BackgroundColor3 = FIELD,
+		BorderSizePixel = 0,
+		Text = "",
+		Parent = parent,
+	}, "Field")
+	for key, value in next, props do
+		box[key] = value
+	end
+	corner(box, 2)
+	stroke(box)
+	local markScale = create("UIScale", { Scale = 0 })
+	local mark = mklabel(box, {
+		Size = UDim2.fromScale(1, 1),
+		Text = "✓",
+		TextColor3 = DARK,
+		TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+	markScale.Parent = mark
+	local state = false
+	local api = { Box = box }
+	function api.Set(on, instant)
+		state = on == true
+		if instant or Library.Theme.Animations == false then
+			box.BackgroundColor3 = state and th("Accent") or th("Field")
+			markScale.Scale = state and 1 or 0
+		else
+			tween(box, 0.1, { BackgroundColor3 = state and th("Accent") or th("Field") })
+			tween(markScale, 0.12, { Scale = state and 1 or 0 }, Enum.EasingStyle.Back)
+		end
+	end
+	function api.Get()
+		return state
+	end
+	return api
 end
 
 ---Format a KeyCode-ish name for badges: RightShift -> "RIGHT SHIFT", MouseButton1 -> "MB1".
@@ -238,6 +535,7 @@ local function newControl(id, info, kind)
 	elseif id then
 		Options[id] = control
 	end
+	table.insert(Library.Controls, control)
 	return control
 end
 
@@ -292,7 +590,7 @@ local function openPopupFrame(anchor, width, height)
 		Size = UDim2.fromOffset(width or anchor.AbsoluteSize.X, height or 100),
 		ZIndex = 100,
 		Parent = Popups,
-	})
+	}, "Card")
 	corner(frame, 2)
 	stroke(frame)
 	Library.ActivePopup = frame
@@ -314,21 +612,27 @@ local function rebuildKeybindList()
 	if not frame then
 		return
 	end
-	for _, child in next, frame:GetChildren() do
+	local listFrame = frame:FindFirstChild("Entries")
+	if not listFrame then
+		return
+	end
+	for _, child in next, listFrame:GetChildren() do
 		if child:IsA("TextLabel") then
 			child:Destroy()
 		end
 	end
 	local shown = 0
 	for _, picker in next, Library.KeyPickers do
-		if picker.Value and picker.Value ~= "None" and picker.Value ~= "N/A" then
+		local bound = picker.Value and picker.Value ~= "None" and picker.Value ~= "N/A"
+		local isFeature = picker.LinkedToggle ~= nil or picker.ShowInList == true
+		if bound and isFeature then
 			shown = shown + 1
 			local on = picker.LinkedToggle and picker.LinkedToggle.Value
-			mklabel(frame, {
+			mklabel(listFrame, {
 				LayoutOrder = shown,
 				Size = UDim2.new(1, 0, 0, 16),
-				Text = "[" .. formatKey(picker.Value) .. "] " .. (picker.Text or ""),
-				TextColor3 = on and ACCENT or TEXT,
+				Text = "  [" .. formatKey(picker.Value) .. "]  " .. (picker.Text or ""),
+				TextColor3 = on and th("Accent") or th("Muted"),
 				TextSize = 11,
 			})
 		end
@@ -342,8 +646,18 @@ end
 local Container = {}
 Container.__index = Container
 
----Create a setting card in the currently shortest grid column.
-function Container:_card(height)
+---Rough text height estimate for column balancing (title 13px ≈ 20 chars, desc 11px ≈ 24 chars).
+local function textLines(text, perLine)
+	return math.max(1, math.ceil(#tostring(text) / perLine))
+end
+
+---Create an auto-height setting card in the currently shortest grid column.
+---Children are stacked by a UIListLayout: title, description, then the control area.
+---@param areaHeight number height of the control strip at the bottom (0 for none)
+---@param title string?
+---@param description string?
+---@return Frame card, Frame area
+function Container:_card(areaHeight, title, description)
 	local heights = self.Heights
 	local shortest = 1
 	for index = 2, #self.Columns do
@@ -351,44 +665,68 @@ function Container:_card(height)
 			shortest = index
 		end
 	end
-	heights[shortest] = heights[shortest] + height + 8
-	self._controlCount = (self._controlCount or 0) + 1
-	if self._placeholder then
-		self._placeholder.Visible = false
-	end
 	local card = create("Frame", {
+		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = CARD,
 		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, height),
+		Size = UDim2.new(1, 0, 0, 0),
 		Parent = self.Columns[shortest],
-	})
+	}, "Card")
 	corner(card, 2)
-	if self.OnCard then
-		self.OnCard(card)
-	end
-	return card
-end
+	padding(card, 10, 10, 10, 10)
+	list(card, 3)
 
-function Container:_head(card, title, tooltip)
-	local titleLabel = mklabel(card, {
-		Position = UDim2.fromOffset(10, 8),
-		Size = UDim2.new(1, -20, 0, 15),
-		Text = title or "",
-		TextSize = 12,
-	})
-	bold(titleLabel)
-	if tooltip and #tostring(tooltip) > 0 then
+	local order = 0
+	if title and #tostring(title) > 0 then
+		order = order + 1
+		local titleLabel = mklabel(card, {
+			AutomaticSize = Enum.AutomaticSize.Y,
+			LayoutOrder = order,
+			Size = UDim2.new(1, 0, 0, 0),
+			Text = title,
+			TextSize = 13,
+			TextWrapped = true,
+		})
+		bold(titleLabel)
+	end
+	if description and #tostring(description) > 0 then
+		order = order + 1
 		mklabel(card, {
-			Position = UDim2.fromOffset(10, 24),
-			Size = UDim2.new(1, -20, 0, 24),
-			Text = tooltip,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			LayoutOrder = order,
+			Size = UDim2.new(1, 0, 0, 0),
+			Text = description,
 			TextColor3 = MUTED,
-			TextSize = 10,
+			TextSize = 11,
 			TextWrapped = true,
 			TextYAlignment = Enum.TextYAlignment.Top,
 		})
 	end
-	return titleLabel
+	local area
+	if areaHeight > 0 then
+		order = order + 1
+		area = create("Frame", {
+			BackgroundTransparency = 1,
+			LayoutOrder = order,
+			Size = UDim2.new(1, 0, 0, areaHeight),
+			Parent = card,
+		})
+	end
+
+	local estimate = 20
+		+ (title and #tostring(title) > 0 and textLines(title, 20) * 16 or 0)
+		+ (description and #tostring(description) > 0 and textLines(description, 24) * 14 or 0)
+		+ (order > 1 and (order - 1) * 3 or 0)
+		+ areaHeight
+	heights[shortest] = heights[shortest] + estimate + 8
+	self._controlCount = (self._controlCount or 0) + 1
+	if self._placeholder then
+		self._placeholder.Visible = false
+	end
+	if self.OnCard then
+		self.OnCard(card)
+	end
+	return card, area
 end
 
 function Container:AddDivider()
@@ -396,23 +734,24 @@ function Container:AddDivider()
 end
 
 function Container:AddLabel(text)
-	local long = #tostring(text) > 40
-	local height = long and math.max(56, 20 + math.ceil(#tostring(text) / 24) * 12) or 44
-	local card = self:_card(height)
+	text = tostring(text)
+	local long = #text > 28
+	local card = self:_card(0)
 	local object = newControl(nil, { Default = text }, "label")
-	if long then
-		object.Label = mklabel(card, {
-			Position = UDim2.fromOffset(10, 8),
-			Size = UDim2.new(1, -20, 1, -16),
-			Text = text,
-			TextColor3 = MUTED,
-			TextSize = 11,
-			TextWrapped = true,
-			TextYAlignment = Enum.TextYAlignment.Top,
-		})
-	else
-		object.Label = self:_head(card, text)
+	object.Label = mklabel(card, {
+		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = 1,
+		Size = UDim2.new(1, 0, 0, 0),
+		Text = text,
+		TextColor3 = long and MUTED or TEXT,
+		TextSize = long and 11 or 13,
+		TextWrapped = true,
+		TextYAlignment = Enum.TextYAlignment.Top,
+	})
+	if not long then
+		bold(object.Label)
 	end
+	local area
 	object.Card = card
 	function object:SetText(value)
 		self.Value = value
@@ -421,9 +760,17 @@ function Container:AddLabel(text)
 		end
 	end
 	function object:AddKeyPicker(keyId, info)
+		if not area then
+			area = create("Frame", {
+				BackgroundTransparency = 1,
+				LayoutOrder = 2,
+				Size = UDim2.new(1, 0, 0, 22),
+				Parent = card,
+			})
+		end
 		local picker = self.Parent:_makeKeyPicker(keyId, info or {}, nil)
-		picker.Badge.Parent = card
-		picker.Badge.Position = UDim2.new(1, -10, 1, -28)
+		picker.Badge.Parent = area
+		picker.Badge.Position = UDim2.new(1, 0, 0, 2)
 		return picker
 	end
 	object.Parent = self
@@ -434,22 +781,19 @@ function Container:AddButton(info, callback)
 	if type(info) ~= "table" then
 		info = { Text = info, Func = callback }
 	end
-	local card = self:_card(70)
-	if info.Tooltip then
-		self:_head(card, "", info.Tooltip)
-	end
+	local card, area = self:_card(32, nil, info.Tooltip)
 	local btn = create("TextButton", {
 		AutoButtonColor = false,
 		BackgroundColor3 = FIELD,
 		BorderSizePixel = 0,
 		Font = FONT,
-		Position = UDim2.new(0, 10, 1, -38),
-		Size = UDim2.new(1, -20, 0, 28),
+		Position = UDim2.new(0, 0, 0, 2),
+		Size = UDim2.new(1, 0, 0, 28),
 		Text = info.Text or "",
 		TextColor3 = TEXT,
 		TextSize = 12,
-		Parent = card,
-	})
+		Parent = area,
+	}, "Field")
 	corner(btn, 2)
 	stroke(btn)
 	local brackets
@@ -501,66 +845,56 @@ end
 
 function Container:AddToggle(id, info)
 	info = info or {}
-	local card = self:_card(78)
-	self:_head(card, info.Text or id, info.Tooltip or info.Description)
+	local card, area = self:_card(26, info.Text or id, info.Tooltip or info.Description)
 	local control = newControl(id, info, "toggle")
-	-- full-card hit zone beneath the checkbox
+	control.Card = card
+	-- full-area hit zone beneath the checkbox
 	local hit = create("TextButton", {
 		AutoButtonColor = false,
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
 		Text = "",
-		Parent = card,
+		Parent = area,
 	})
-	local box = create("TextButton", {
-		AutoButtonColor = false,
-		BackgroundColor3 = FIELD,
-		BorderSizePixel = 0,
-		Position = UDim2.new(1, -26, 1, -26),
+	local checkbox = makeCheckbox(area, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 5),
 		Size = UDim2.fromOffset(16, 16),
-		Text = "",
-		Parent = card,
-	})
-	corner(box, 2)
-	stroke(box)
-	local mark = mklabel(box, {
-		Size = UDim2.fromScale(1, 1),
-		Text = "✓",
-		TextColor3 = DARK,
-		TextSize = 12,
-		TextXAlignment = Enum.TextXAlignment.Center,
-		Visible = false,
 	})
 	function control:Display()
-		local on = self.Value == true
-		mark.Visible = on
-		box.BackgroundColor3 = on and ACCENT or FIELD
+		checkbox.Set(self.Value == true)
 	end
-	track(box.MouseButton1Click:Connect(function()
+	track(checkbox.Box.MouseButton1Click:Connect(function()
 		control:SetValue(not control.Value)
 	end))
 	track(hit.MouseButton1Click:Connect(function()
 		control:SetValue(not control.Value)
 	end))
 	function control:AddKeyPicker(keyId, keyInfo)
+		if self.AutoPicker then
+			removePicker(self.AutoPicker)
+			self.AutoPicker = nil
+		end
 		local picker = self.Parent:_makeKeyPicker(keyId, keyInfo or {}, self)
-		picker.Badge.Parent = card
-		picker.Badge.Position = UDim2.new(1, -40, 1, -28)
+		picker.Badge.Parent = area
+		picker.Badge.Position = UDim2.new(1, -24, 0, 4)
 		return picker
 	end
 	function control:AddColorPicker(colorId, colorInfo)
 		return self.Parent:AddColorPicker(colorId, colorInfo)
 	end
 	control.Parent = self
-	control.Card = card
 	control:Display()
+	-- "[ + ]" slot: let users bind a key to any toggle from the UI itself.
+	if id and (not info or info.NoKeybind ~= true) then
+		self:_autoKeybind(control, id, info.Text or id, area, UDim2.new(1, -24, 0, 4))
+	end
 	return control
 end
 
 function Container:AddSlider(id, info)
 	info = info or {}
-	local card = self:_card(104)
-	self:_head(card, info.Text or id, info.Tooltip or info.Description)
+	local card, area = self:_card(48, info.Text or id, info.Tooltip or info.Description)
 	local control = newControl(id, info, "slider")
 	control.Value = tonumber(info.Default) or tonumber(info.Min) or 0
 	local min, max = tonumber(info.Min) or 0, tonumber(info.Max) or 100
@@ -574,11 +908,11 @@ function Container:AddSlider(id, info)
 		AutoButtonColor = false,
 		BackgroundColor3 = FIELD,
 		BorderSizePixel = 0,
-		Position = UDim2.new(0, 10, 1, -56),
-		Size = UDim2.new(1, -20, 0, 5),
+		Position = UDim2.new(0, 0, 0, 4),
+		Size = UDim2.new(1, 0, 0, 5),
 		Text = "",
-		Parent = card,
-	})
+		Parent = area,
+	}, "Field")
 	corner(trackBar, 2)
 	local fill = create("Frame", {
 		BackgroundColor3 = ACCENT,
@@ -601,20 +935,25 @@ function Container:AddSlider(id, info)
 		BorderSizePixel = 0,
 		ClearTextOnFocus = false,
 		Font = FONT,
-		Position = UDim2.new(0, 10, 1, -42),
-		Size = UDim2.new(1, -20, 0, 22),
+		Position = UDim2.new(0, 0, 0, 18),
+		Size = UDim2.new(1, 0, 0, 24),
 		TextColor3 = TEXT,
 		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Parent = card,
-	})
+		Parent = area,
+	}, "Field")
 	corner(field, 2)
 	stroke(field)
 	padding(field, 8)
 	function control:Display()
 		local alpha = max > min and math.clamp((self.Value - min) / (max - min), 0, 1) or 0
-		fill.Size = UDim2.new(alpha, 0, 1, 0)
-		knob.Position = UDim2.new(alpha, 0, 0.5, 0)
+		if self._dragging or Library.Theme.Animations == false then
+			fill.Size = UDim2.new(alpha, 0, 1, 0)
+			knob.Position = UDim2.new(alpha, 0, 0.5, 0)
+		else
+			tween(fill, 0.06, { Size = UDim2.new(alpha, 0, 1, 0) })
+			tween(knob, 0.06, { Position = UDim2.new(alpha, 0, 0.5, 0) })
+		end
 		field.Text = "~$ " .. tostring(self.Value) .. (info.Suffix or "")
 	end
 	local baseSetValue = control.SetValue
@@ -628,6 +967,7 @@ function Container:AddSlider(id, info)
 	end
 	track(trackBar.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			control._dragging = true
 			setFromInput(input)
 		end
 	end))
@@ -637,6 +977,11 @@ function Container:AddSlider(id, info)
 			and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
 		then
 			setFromInput(input)
+		end
+	end))
+	track(UIS.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			control._dragging = false
 		end
 	end))
 	track(field.FocusLost:Connect(function()
@@ -653,16 +998,15 @@ end
 
 function Container:AddInput(id, info)
 	info = info or {}
-	local card = self:_card(92)
-	self:_head(card, info.Text or id, info.Tooltip or info.Description)
+	local card, area = self:_card(30, info.Text or id, info.Tooltip or info.Description)
 	local control = newControl(id, { Default = tostring(info.Default or ""), Callback = info.Callback }, "input")
 	local wrap = create("Frame", {
 		BackgroundColor3 = FIELD,
 		BorderSizePixel = 0,
-		Position = UDim2.new(0, 10, 1, -36),
-		Size = UDim2.new(1, -20, 0, 26),
-		Parent = card,
-	})
+		Position = UDim2.new(0, 0, 0, 2),
+		Size = UDim2.new(1, 0, 0, 26),
+		Parent = area,
+	}, "Field")
 	corner(wrap, 2)
 	stroke(wrap)
 	mklabel(wrap, {
@@ -706,8 +1050,7 @@ end
 
 function Container:AddDropdown(id, info)
 	info = info or {}
-	local card = self:_card(92)
-	self:_head(card, info.Text or id, info.Tooltip or info.Description)
+	local card, area = self:_card(30, info.Text or id, info.Tooltip or info.Description)
 	local control = newControl(id, info, "dropdown")
 	control.Multi = info.Multi == true
 	if type(control.Value) == "number" then
@@ -720,11 +1063,11 @@ function Container:AddDropdown(id, info)
 		AutoButtonColor = false,
 		BackgroundColor3 = FIELD,
 		BorderSizePixel = 0,
-		Position = UDim2.new(0, 10, 1, -36),
-		Size = UDim2.new(1, -20, 0, 26),
+		Position = UDim2.new(0, 0, 0, 2),
+		Size = UDim2.new(1, 0, 0, 26),
 		Text = "",
-		Parent = card,
-	})
+		Parent = area,
+	}, "Field")
 	corner(field, 2)
 	stroke(field)
 	padding(field, 8)
@@ -798,7 +1141,7 @@ function Container:AddDropdown(id, info)
 				Position = UDim2.fromOffset(10, 0),
 				Size = UDim2.new(1, -14, 1, 0),
 				Text = tostring(value),
-				TextColor3 = isSelected(value) and TEXT or MUTED,
+				TextColor3 = isSelected(value) and th("Text") or th("Muted"),
 				TextSize = 11,
 				ZIndex = 102,
 			})
@@ -809,7 +1152,7 @@ function Container:AddDropdown(id, info)
 					control:SetValue(set)
 					local on = isSelected(value)
 					bar.Visible = on
-					rowLabel.TextColor3 = on and TEXT or MUTED
+					rowLabel.TextColor3 = on and th("Text") or th("Muted")
 				else
 					if isSelected(value) and info.AllowNull then
 						control:SetValue(nil)
@@ -856,6 +1199,27 @@ local function makeBadge()
 	return badge, badgeText
 end
 
+---Fully unregister a keypicker (its badge may be destroyed).
+local function removePicker(picker)
+	picker.Display = nil
+	if picker.Badge then
+		picker.Badge:Destroy()
+		picker.Badge = nil
+	end
+	for index, p in next, Library.KeyPickers do
+		if p == picker then
+			table.remove(Library.KeyPickers, index)
+			break
+		end
+	end
+	for index, c in next, Library.Controls do
+		if c == picker then
+			table.remove(Library.Controls, index)
+			break
+		end
+	end
+end
+
 function Container:_makeKeyPicker(id, info, linkedToggle)
 	info = info or {}
 	local default = info.Default
@@ -867,14 +1231,36 @@ function Container:_makeKeyPicker(id, info, linkedToggle)
 	control.Text = info.Text
 	control.LinkedToggle = linkedToggle
 	control.SyncToggle = info.SyncToggleState == true
+	control.Auto = info.Auto == true
+	control.ShowInList = info.ShowInList == true
 	control.Held = false
 	table.insert(Library.KeyPickers, control)
 
 	local badge, badgeText = makeBadge()
 	control.Badge = badge
+	control.BadgeText = badgeText
 	function control:Display()
-		badgeText.Text = formatKey(self.Value)
-		badge.Size = UDim2.fromOffset(badgeWidth(self.Value), 18)
+		local empty = self.Value == nil or self.Value == "None" or self.Value == "N/A"
+		if self.Auto and empty then
+			badgeText.Text = "+"
+			badgeText.TextColor3 = th("Muted")
+			badge.BackgroundTransparency = 1
+			badge.Size = UDim2.fromOffset(24, 18)
+			if not badge:FindFirstChildOfClass("UIStroke") then
+				stroke(badge, DIM, 1)
+			end
+			badge:FindFirstChildOfClass("UIStroke").Color = th("Dim")
+		else
+			badgeText.Text = formatKey(self.Value)
+			badgeText.TextColor3 = th("Dark")
+			badge.BackgroundTransparency = 0
+			badge.BackgroundColor3 = th("Badge")
+			badge.Size = UDim2.fromOffset(badgeWidth(self.Value), 18)
+			local s = badge:FindFirstChildOfClass("UIStroke")
+			if s then
+				s:Destroy()
+			end
+		end
 		rebuildKeybindList()
 	end
 	track(badge.MouseButton1Click:Connect(function()
@@ -894,14 +1280,35 @@ function Container:_makeKeyPicker(id, info, linkedToggle)
 	return control
 end
 
+---Attach a "[ + ]" ghost badge that lets the user bind a key to a feature themselves.
+---Creates a real keypicker under id "<id>Key" so the bind persists in configs.
+---@param control table the toggle/module it drives
+---@param id string base option id
+---@param name string display name
+---@param parent Instance badge parent
+---@param position UDim2
+function Container:_autoKeybind(control, id, name, parent, position)
+	local keyId = id .. "Key"
+	local picker = self:_makeKeyPicker(keyId, {
+		Default = "None",
+		Text = name,
+		Mode = "Toggle",
+		SyncToggleState = true,
+		Auto = true,
+	}, control)
+	picker.Badge.Parent = parent
+	picker.Badge.Position = position
+	control.AutoPicker = picker
+	return picker
+end
+
 function Container:AddKeyPicker(id, info)
 	info = info or {}
 	local picker = self:_makeKeyPicker(id, info, nil)
 	if info.Text then
-		local card = self:_card(70)
-		self:_head(card, info.Text, info.Tooltip or info.Description)
-		picker.Badge.Parent = card
-		picker.Badge.Position = UDim2.new(1, -10, 1, -28)
+		local _, area = self:_card(24, info.Text, info.Tooltip or info.Description)
+		picker.Badge.Parent = area
+		picker.Badge.Position = UDim2.new(1, 0, 0, 3)
 	else
 		picker.Badge:Destroy()
 		picker.Badge = nil
@@ -984,18 +1391,18 @@ end))
 
 function Container:AddColorPicker(id, info)
 	info = info or {}
-	local card = self:_card(70)
-	self:_head(card, info.Text or id, info.Tooltip or info.Description)
+	local _, area = self:_card(26, info.Text or id, info.Tooltip or info.Description)
 	local control = newControl(id, info, "color")
 	control.Value = info.Default or ACCENT
 	local swatch = create("TextButton", {
+		AnchorPoint = Vector2.new(1, 0),
 		AutoButtonColor = false,
 		BackgroundColor3 = control.Value,
 		BorderSizePixel = 0,
-		Position = UDim2.new(1, -38, 1, -28),
+		Position = UDim2.new(1, 0, 0, 4),
 		Size = UDim2.fromOffset(28, 18),
 		Text = "",
-		Parent = card,
+		Parent = area,
 	})
 	corner(swatch, 2)
 	stroke(swatch)
@@ -1212,7 +1619,7 @@ function Library:Notify(message, duration)
 		BorderSizePixel = 0,
 		Size = UDim2.new(1, 0, 0, 40),
 		Parent = holder,
-	})
+	}, "Card")
 	corner(note, 2)
 	stroke(note)
 	create("Frame", {
@@ -1254,7 +1661,7 @@ function Library:SetWatermark(text)
 			Size = UDim2.fromOffset(10, 22),
 			Visible = false,
 			Parent = self.ScreenGui,
-		})
+		}, "Card")
 		corner(pill, 2)
 		stroke(pill)
 		mklabel(pill, {
@@ -1283,9 +1690,38 @@ end
 function Library:Toggle()
 	self.Visible = not self.Visible
 	self:ClosePopup()
-	if self.Window and self.Window.Outer then
-		self.Window.Outer.Visible = self.Visible
+	local outer = self.Window and self.Window.Outer
+	if outer then
+		local finalSize = self._windowSize or outer.Size
+		self._windowSize = finalSize
+		if self.Visible then
+			outer.Visible = true
+			outer.Size = UDim2.new(
+				finalSize.X.Scale, math.floor(finalSize.X.Offset * 0.94),
+				finalSize.Y.Scale, math.floor(finalSize.Y.Offset * 0.94)
+			)
+			tween(outer, 0.18, { Size = finalSize }, Enum.EasingStyle.Quart)
+		else
+			local t = tween(outer, 0.1, {
+				Size = UDim2.new(
+					finalSize.X.Scale, math.floor(finalSize.X.Offset * 0.94),
+					finalSize.Y.Scale, math.floor(finalSize.Y.Offset * 0.94)
+				),
+			})
+			if t then
+				t.Completed:Connect(function()
+					if not self.Visible then
+						outer.Visible = false
+					end
+					outer.Size = finalSize
+				end)
+			else
+				outer.Visible = false
+				outer.Size = finalSize
+			end
+		end
 	end
+	self:_syncBlur()
 end
 
 function Library:Unload()
@@ -1297,6 +1733,12 @@ function Library:Unload()
 		pcall(function()
 			signal:Disconnect()
 		end)
+	end
+	if self._blur then
+		pcall(function()
+			self._blur:Destroy()
+		end)
+		self._blur = nil
 	end
 	if self.ScreenGui then
 		pcall(function()
@@ -1328,15 +1770,38 @@ function Library:CreateWindow(config)
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = CARD,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 		Position = UDim2.fromOffset(10, 40),
-		Size = UDim2.fromOffset(200, 0),
+		Size = UDim2.fromOffset(200, 22),
 		Visible = false,
 		Parent = gui,
-	})
+	}, "Card")
 	corner(keybindFrame, 2)
 	stroke(keybindFrame)
-	padding(keybindFrame, 6, 6, 6, 6)
-	list(keybindFrame, 2)
+	local kbHeader = create("Frame", {
+		BackgroundColor3 = ACCENT,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 22),
+		Parent = keybindFrame,
+	})
+	local kbTitle = mklabel(kbHeader, {
+		Size = UDim2.fromScale(1, 1),
+		Text = "Keybinds",
+		TextColor3 = DARK,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+	bold(kbTitle)
+	local kbEntries = create("Frame", {
+		Name = "Entries",
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, 22),
+		Size = UDim2.new(1, 0, 0, 0),
+		Parent = keybindFrame,
+	})
+	list(kbEntries, 2)
+	padding(kbEntries, 0, 0, 4, 6)
 	self.KeybindFrame = keybindFrame
 	self.KeybindListFrame = keybindFrame
 	self:MakeDraggable(keybindFrame, 99999)
@@ -1348,17 +1813,63 @@ function Library:CreateWindow(config)
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = config.Size or UDim2.fromOffset(980, 560),
 		Parent = gui,
-	})
+	}, "Window")
 	corner(outer, 2)
 	stroke(outer)
 	self:MakeDraggable(outer, 46)
+
+	-- Custom background layer: image + fake-blur copies + dim overlay.
+	local bgFrame = create("Frame", {
+		Name = "BackgroundLayer",
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = -10,
+		Parent = outer,
+	})
+	corner(bgFrame, 2)
+	local bgImage = create("ImageLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		Image = "",
+		ImageTransparency = 1,
+		Position = UDim2.fromScale(0.5, 0.5),
+		ScaleType = Enum.ScaleType.Crop,
+		Size = UDim2.fromScale(1.04, 1.04),
+		ZIndex = -10,
+		Parent = bgFrame,
+	})
+	local bgCopies = {}
+	for i = 1, 8 do
+		bgCopies[i] = create("ImageLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundTransparency = 1,
+			Image = "",
+			ImageTransparency = 1,
+			Position = UDim2.fromScale(0.5, 0.5),
+			ScaleType = Enum.ScaleType.Crop,
+			Size = UDim2.fromScale(1.04, 1.04),
+			Visible = false,
+			ZIndex = -9,
+			Parent = bgFrame,
+		})
+	end
+	local bgDim = create("Frame", {
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = -8,
+		Parent = bgFrame,
+	})
+	self._bg = { frame = bgFrame, image = bgImage, copies = bgCopies, dim = bgDim }
 
 	local header = create("Frame", {
 		BackgroundColor3 = HEADER,
 		BorderSizePixel = 0,
 		Size = UDim2.new(1, 0, 0, 46),
 		Parent = outer,
-	})
+	}, "Panel")
 	local title = mklabel(header, {
 		Position = UDim2.fromOffset(14, 0),
 		Size = UDim2.new(0.5, -20, 1, 0),
@@ -1408,7 +1919,7 @@ function Library:CreateWindow(config)
 		Position = UDim2.fromOffset(10, 54),
 		Size = UDim2.new(0, 170, 1, -64),
 		Parent = outer,
-	})
+	}, "Panel")
 	corner(nav, 2)
 	padding(nav, 6, 6, 8, 8)
 	list(nav, 2)
@@ -1421,7 +1932,7 @@ function Library:CreateWindow(config)
 		ScrollBarThickness = 2,
 		Size = UDim2.new(0, 212, 1, -64),
 		Parent = outer,
-	})
+	}, "Panel")
 	corner(moduleColumn, 2)
 	padding(moduleColumn, 8, 8, 8, 8)
 	local moduleLayout = list(moduleColumn, 6)
@@ -1449,7 +1960,7 @@ function Library:CreateWindow(config)
 		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = rightPane,
-	})
+	}, "Field")
 	corner(searchField, 2)
 	stroke(searchField)
 	padding(searchField, 10, 44)
@@ -1472,7 +1983,7 @@ function Library:CreateWindow(config)
 		ScrollBarThickness = 2,
 		Size = UDim2.new(1, 0, 1, -38),
 		Parent = rightPane,
-	})
+	}, "Panel")
 	corner(settingsPane, 2)
 
 	local window = { Tabs = {}, Outer = outer, Modules = {}, ActiveTab = nil }
@@ -1588,17 +2099,18 @@ function Library:CreateWindow(config)
 
 		function tab:Show()
 			for _, other in next, window.Tabs do
-				other.Item.BackgroundTransparency = 1
-				other.NameLabel.TextColor3 = MUTED
+				tween(other.Item, 0.12, { BackgroundTransparency = 1 })
+				tween(other.NameLabel, 0.12, { TextColor3 = th("Muted") })
 				for _, s in next, other.Stripes do
 					s.Visible = false
 				end
 			end
-			item.BackgroundTransparency = 0
-			item.BackgroundColor3 = ACCENT
-			nameLabel.TextColor3 = DARK
+			item.BackgroundColor3 = th("Accent")
+			tween(item, 0.12, { BackgroundTransparency = 0 })
+			tween(nameLabel, 0.12, { TextColor3 = th("Dark") })
 			for _, s in next, stripes do
 				s.Visible = true
+				s.BackgroundColor3 = th("Dark")
 			end
 			window.ActiveTab = tab
 			applyModuleFilter()
@@ -1623,12 +2135,12 @@ function Library:CreateWindow(config)
 		end
 		track(item.MouseEnter:Connect(function()
 			if window.ActiveTab ~= tab then
-				nameLabel.TextColor3 = TEXT
+				tween(nameLabel, 0.08, { TextColor3 = th("Text") })
 			end
 		end))
 		track(item.MouseLeave:Connect(function()
 			if window.ActiveTab ~= tab then
-				nameLabel.TextColor3 = MUTED
+				tween(nameLabel, 0.08, { TextColor3 = th("Muted") })
 			end
 		end))
 		track(item.MouseButton1Click:Connect(function()
@@ -1713,7 +2225,7 @@ function Library:CreateWindow(config)
 			Size = UDim2.new(1, 0, 0, 44),
 			Visible = false,
 			Parent = columns[1],
-		})
+		}, "Card")
 		corner(placeholder, 2)
 		mklabel(placeholder, {
 			Size = UDim2.fromScale(1, 1),
@@ -1739,7 +2251,7 @@ function Library:CreateWindow(config)
 			Text = "",
 			Visible = false,
 			Parent = moduleColumn,
-		})
+		}, "Card")
 		corner(card, 2)
 		local brackets = addBrackets(card, DIM, 12, 2)
 
@@ -1784,22 +2296,21 @@ function Library:CreateWindow(config)
 			module.Changed = {}
 			Toggles[id] = module
 
-			local onOff = create("TextButton", {
-				AutoButtonColor = false,
-				BackgroundTransparency = 1,
-				Font = FONT,
-				Size = UDim2.new(0, 44, 0, 22),
-				Text = "OFF",
+			local checkbox = makeCheckbox(bottomRow, {
+				Position = UDim2.fromOffset(0, 3),
+				Size = UDim2.fromOffset(16, 16),
+			})
+			mklabel(bottomRow, {
+				Position = UDim2.fromOffset(22, 0),
+				Size = UDim2.new(0, 60, 0, 22),
+				Text = "Enabled",
 				TextColor3 = MUTED,
-				TextSize = 11,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				Parent = bottomRow,
+				TextSize = 10,
 			})
 			function module:Display()
-				onOff.Text = self.Value and "ON" or "OFF"
-				onOff.TextColor3 = self.Value and ACCENT or MUTED
+				checkbox.Set(self.Value == true)
 			end
-			track(onOff.MouseButton1Click:Connect(function()
+			track(checkbox.Box.MouseButton1Click:Connect(function()
 				module:SetValue(not module.Value)
 				selectModule(module)
 			end))
@@ -1839,18 +2350,23 @@ function Library:CreateWindow(config)
 		})
 
 		function module:SetSelected(on)
+			local bracketColor = on and th("Accent") or th("Dim")
 			for _, f in next, brackets do
-				f.BackgroundColor3 = on and ACCENT or DIM
+				tween(f, 0.12, { BackgroundColor3 = bracketColor })
 			end
 			for _, f in next, gearBrackets do
-				f.BackgroundColor3 = on and ACCENT or DIM
+				tween(f, 0.12, { BackgroundColor3 = bracketColor })
 			end
-			titleLabel.TextColor3 = on and TEXT or MUTED
-			gearIcon.ImageColor3 = on and ACCENT or TEXT
+			tween(titleLabel, 0.12, { TextColor3 = on and th("Text") or th("Muted") })
+			tween(gearIcon, 0.12, { ImageColor3 = on and th("Accent") or th("Text") })
 		end
 
 		function module:AddKeyPicker(keyId, keyInfo)
 			keyInfo = keyInfo or {}
+			if self.AutoPicker then
+				removePicker(self.AutoPicker)
+				self.AutoPicker = nil
+			end
 			local picker = self:_makeKeyPicker(keyId, keyInfo, toggleable and self or nil)
 			picker.Badge.Parent = badgeSlot
 			picker.Badge.Position = UDim2.new(1, 0, 0, 0)
@@ -1860,6 +2376,10 @@ function Library:CreateWindow(config)
 			picker:OnChanged(syncBadge)
 			syncBadge()
 			return picker
+		end
+
+		if toggleable then
+			module:_autoKeybind(id, module.Name, badgeSlot, UDim2.new(1, 0, 0, 0))
 		end
 
 		track(card.MouseButton1Click:Connect(function()
@@ -1881,6 +2401,12 @@ function Library:CreateWindow(config)
 
 	self.Window = window
 	self.Visible = true
+	self._windowSize = outer.Size
+	outer.Size = UDim2.new(
+		outer.Size.X.Scale, math.floor(outer.Size.X.Offset * 0.94),
+		outer.Size.Y.Scale, math.floor(outer.Size.Y.Offset * 0.94)
+	)
+	tween(outer, 0.18, { Size = self._windowSize }, Enum.EasingStyle.Quart)
 	return window
 end
 
@@ -1896,7 +2422,7 @@ local function serializeControls(ignore)
 		end
 	end
 	for id, control in next, Options do
-		if not ignore[id] then
+		if not ignore[id] and not tostring(id):match("^UI_") then
 			local kind = control.Type
 			if kind == "slider" or kind == "input" or kind == "dropdown" or kind == "keypicker" then
 				data[id] = { type = kind, value = control.Value }
@@ -1932,6 +2458,7 @@ end
 function Library:AddConfigModule(tab, opts)
 	opts = opts or {}
 	local folder = opts.Folder or "UAPB/Configs"
+	self._themeFolder = self._themeFolder or folder
 	local settingsDir = folder .. "/settings"
 	local ignore = {}
 	for _, id in next, opts.Ignore or {} do
@@ -2094,6 +2621,468 @@ function Library:LoadAutoloadConfig()
 			cfg.autoloadLabel:SetText("Autoload: " .. name)
 		end
 	end
+end
+
+--------------------------------------------------------------------------------
+-- Theme application, background image, screen blur
+--------------------------------------------------------------------------------
+
+---Sync the Lighting blur with theme + visibility.
+function Library:_syncBlur()
+	if self._blur then
+		self._blur.Enabled = self.Theme.ScreenBlur == true and self.Visible ~= false
+		self._blur.Size = self.Theme.BlurSize or 24
+	end
+end
+
+---Enable/disable blur of the game behind the UI.
+function Library:SetBlur(enabled, size)
+	if enabled ~= nil then
+		self.Theme.ScreenBlur = enabled == true
+	end
+	if size then
+		self.Theme.BlurSize = size
+	end
+	if self.Theme.ScreenBlur or self._blur then
+		if not self._blur then
+			local lighting = game:GetService("Lighting")
+			self._blur = lighting:FindFirstChild("SubstanceUIBlur")
+				or Instance.new("BlurEffect")
+			self._blur.Name = "SubstanceUIBlur"
+			self._blur.Parent = lighting
+		end
+		self:_syncBlur()
+	end
+end
+
+---Resolve a user-supplied image reference to an asset id.
+local function resolveAsset(input)
+	input = tostring(input or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	if #input == 0 then
+		return ""
+	end
+	if input:find("rbxasset") or input:find("://") then
+		return input
+	end
+	if input:match("^%d+$") then
+		return "rbxassetid://" .. input
+	end
+	local f = fs()
+	local getcustomasset = env.getcustomasset or _G.getcustomasset
+	if f.isfile and getcustomasset then
+		local exists = false
+		pcall(function()
+			exists = f.isfile(input)
+		end)
+		if exists then
+			local ok, asset = pcall(getcustomasset, input)
+			if ok and type(asset) == "string" then
+				return asset
+			end
+		end
+	end
+	return input
+end
+
+local BLUR_OFFSETS = {
+	{ 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 },
+	{ 1, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 },
+}
+
+---Configure the window background image layer.
+---Image accepts "rbxassetid://…", a bare numeric id, or a workspace file path.
+function Library:SetBackground(opts)
+	opts = opts or {}
+	local theme = self.Theme
+	if opts.Image ~= nil then
+		theme.BackgroundImage = tostring(opts.Image)
+	end
+	if opts.Transparency ~= nil then
+		theme.BackgroundImageTransparency = tonumber(opts.Transparency) or 0
+	end
+	if opts.Blur ~= nil then
+		theme.BackgroundImageBlur = tonumber(opts.Blur) or 0
+	end
+	if opts.Dim ~= nil then
+		theme.BackgroundDim = tonumber(opts.Dim) or 0
+	end
+	local bg = self._bg
+	if not bg then
+		return
+	end
+	local asset = resolveAsset(theme.BackgroundImage)
+	local hasImage = #asset > 0
+	bg.image.Image = asset
+	bg.image.ImageTransparency = hasImage and math.clamp(theme.BackgroundImageTransparency or 0, 0, 1) or 1
+	local radius = (theme.BackgroundImageBlur or 0) * 6
+	local copiesOn = hasImage and radius > 0.4
+	for index, copy in next, bg.copies do
+		copy.Image = asset
+		copy.Visible = copiesOn
+		if copiesOn then
+			local off = BLUR_OFFSETS[index]
+			copy.Position = UDim2.new(0.5, off[1] * radius, 0.5, off[2] * radius)
+			copy.ImageTransparency = math.clamp((theme.BackgroundImageTransparency or 0) + 0.55, 0, 0.92)
+		end
+	end
+	bg.dim.BackgroundTransparency = 1 - math.clamp(theme.BackgroundDim or 0, 0, 1)
+end
+
+local TRANSPARENCY_KEYS = {
+	Window = "WindowTransparency",
+	Header = "PanelTransparency",
+	Panel = "PanelTransparency",
+	Card = "CardTransparency",
+	Field = "FieldTransparency",
+}
+
+---Merge a partial theme table and repaint everything.
+function Library:ApplyTheme(partial, skipSave)
+	for key, value in next, partial or {} do
+		self.Theme[key] = value
+	end
+	local theme = self.Theme
+
+	-- Legacy fields (InfoLogger/AnimationVisualizer read these).
+	self.FontColor = theme.Text
+	self.MainColor = theme.Panel
+	self.BackgroundColor = theme.Background
+	self.AccentColor = theme.Accent
+	self.AccentColorDark = theme.AccentDark
+	self.OutlineColor = theme.Outline
+	self.Font = theme.Font
+
+	for _, entry in next, self.ThemeRegistry do
+		local object, property, role, base = entry[1], entry[2], entry[3], entry[4]
+		pcall(function()
+			if property == "BackgroundTransparency" then
+				object.BackgroundTransparency = theme[TRANSPARENCY_KEYS[role]] or 0
+			elseif role == "Font" then
+				object.Font = theme.Font
+			elseif role == "TextScale" then
+				object.TextSize = math.max(1, math.floor(base * theme.TextScale + 0.5))
+			else
+				object[property] = theme[role]
+			end
+		end)
+	end
+
+	for _, titleLabel in next, self.TitleLabels do
+		pcall(function()
+			local family = FONT_FAMILIES[tostring(theme.Font.Name)] or "RobotoMono"
+			titleLabel.FontFace =
+				Font.new("rbxasset://fonts/families/" .. family .. ".json", Enum.FontWeight.Bold)
+		end)
+	end
+
+	for _, control in next, self.Controls do
+		if control.Display then
+			pcall(function()
+				control:Display()
+			end)
+		end
+	end
+
+	if self.Window then
+		for _, module in next, self.Window.Modules do
+			pcall(function()
+				module:SetSelected(module == self.Window.SelectedModule)
+				if module.Display then
+					module:Display()
+				end
+			end)
+		end
+		if self.Window.ActiveTab then
+			self.Window.ActiveTab:Show()
+		end
+	end
+
+	self:SetBackground({})
+	if self.Theme.ScreenBlur and not self._blur then
+		self:SetBlur(true)
+	else
+		self:_syncBlur()
+	end
+	rebuildKeybindList()
+
+	if not skipSave then
+		self:SaveTheme()
+	end
+end
+
+---Persist the theme to <Folder>/theme.json.
+function Library:SaveTheme()
+	local folder = self._themeFolder
+	if not folder then
+		return
+	end
+	local f = fs()
+	if not (f.writefile and f.makefolder and f.isfolder) then
+		return
+	end
+	local theme = self.Theme
+	local data = {
+		preset = self._activePreset,
+		accent = { r = to255(theme.Accent.R), g = to255(theme.Accent.G), b = to255(theme.Accent.B) },
+		font = theme.Font.Name,
+		textScale = theme.TextScale,
+		windowTransparency = theme.WindowTransparency,
+		panelTransparency = theme.PanelTransparency,
+		cardTransparency = theme.CardTransparency,
+		fieldTransparency = theme.FieldTransparency,
+		backgroundImage = theme.BackgroundImage,
+		backgroundTransparency = theme.BackgroundImageTransparency,
+		backgroundBlur = theme.BackgroundImageBlur,
+		backgroundDim = theme.BackgroundDim,
+		screenBlur = theme.ScreenBlur,
+		blurSize = theme.BlurSize,
+		animations = theme.Animations,
+	}
+	pcall(function()
+		if not f.isfolder(folder) then
+			f.makefolder(folder)
+		end
+		f.writefile(folder .. "/theme.json", HttpService:JSONEncode(data))
+	end)
+end
+
+---Load a saved theme. Returns the raw decoded table or nil.
+function Library:LoadTheme()
+	local folder = self._themeFolder
+	local f = fs()
+	if not (folder and f.isfile and f.readfile and f.isfile(folder .. "/theme.json")) then
+		return nil
+	end
+	local ok, data = pcall(function()
+		return HttpService:JSONDecode(f.readfile(folder .. "/theme.json"))
+	end)
+	if not (ok and type(data) == "table") then
+		return nil
+	end
+	local partial = {}
+	if type(data.accent) == "table" then
+		partial.Accent = Color3.fromRGB(data.accent.r or 0, data.accent.g or 0, data.accent.b or 0)
+		partial.AccentDark = Color3.new(partial.Accent.R * 0.7, partial.Accent.G * 0.7, partial.Accent.B * 0.7)
+	end
+	if data.font and Enum.Font[data.font] then
+		partial.Font = Enum.Font[data.font]
+	end
+	partial.TextScale = tonumber(data.textScale)
+	partial.WindowTransparency = tonumber(data.windowTransparency)
+	partial.PanelTransparency = tonumber(data.panelTransparency)
+	partial.CardTransparency = tonumber(data.cardTransparency)
+	partial.FieldTransparency = tonumber(data.fieldTransparency)
+	partial.BackgroundImage = data.backgroundImage
+	partial.BackgroundImageTransparency = tonumber(data.backgroundTransparency)
+	partial.BackgroundImageBlur = tonumber(data.backgroundBlur)
+	partial.BackgroundDim = tonumber(data.backgroundDim)
+	partial.ScreenBlur = data.screenBlur == true
+	partial.BlurSize = tonumber(data.blurSize)
+	partial.Animations = data.animations ~= false
+	self._activePreset = data.preset
+	self:ApplyTheme(partial, true)
+	return data
+end
+
+---Add the "Theme" module to a tab.
+function Library:AddThemeModule(tab, opts)
+	opts = opts or {}
+	if opts.Folder then
+		self._themeFolder = opts.Folder
+	elseif not self._themeFolder then
+		self._themeFolder = "UAPB/Configs"
+	end
+
+	local module = tab:AddModule(nil, {
+		Name = "Theme",
+		Description = "Change the preset, accent color, fonts, background image, and effects.",
+	})
+
+	local ordered = { "Dark", "Glass" }
+	local extra = {}
+	for name in next, self.Presets do
+		if name ~= "Dark" and name ~= "Glass" then
+			table.insert(extra, name)
+		end
+	end
+	table.sort(extra)
+	for _, name in next, extra do
+		table.insert(ordered, name)
+	end
+
+	module:AddDropdown("UI_Preset", {
+		Text = "Preset",
+		Values = ordered,
+		Default = self._activePreset or "Dark",
+		Callback = function(name)
+			local preset = Library.Presets[name]
+			if preset then
+				Library._activePreset = name
+				Library:ApplyTheme(preset)
+				if Options.UI_Accent then
+					Options.UI_Accent:SetValue(Library.Theme.Accent)
+				end
+			end
+		end,
+	})
+
+	module:AddColorPicker("UI_Accent", {
+		Text = "Accent Color",
+		Default = self.Theme.Accent,
+		Callback = function(color)
+			Library._activePreset = nil
+			Library:ApplyTheme({
+				Accent = color,
+				AccentDark = Color3.new(color.R * 0.7, color.G * 0.7, color.B * 0.7),
+			})
+		end,
+	})
+
+	module:AddDropdown("UI_Font", {
+		Text = "Font",
+		Values = self.Fonts,
+		Default = self.Theme.Font.Name,
+		Callback = function(name)
+			if Enum.Font[name] then
+				Library:ApplyTheme({ Font = Enum.Font[name] })
+			end
+		end,
+	})
+
+	module:AddSlider("UI_TextScale", {
+		Text = "Text Scale",
+		Min = 0.9,
+		Max = 1.3,
+		Default = 1,
+		Rounding = 2,
+		Callback = function(scale)
+			Library:ApplyTheme({ TextScale = scale })
+		end,
+	})
+
+	module:AddInput("UI_BackgroundImage", {
+		Text = "Background Image",
+		Placeholder = "rbxassetid://… or workspace file",
+		Callback = function(value)
+			Library:SetBackground({ Image = value })
+			Library:SaveTheme()
+		end,
+	})
+
+	module:AddSlider("UI_BackgroundTransparency", {
+		Text = "Image Transparency",
+		Min = 0,
+		Max = 1,
+		Default = 0.6,
+		Rounding = 2,
+		Callback = function(value)
+			Library:SetBackground({ Transparency = value })
+			Library:SaveTheme()
+		end,
+	})
+
+	module:AddSlider("UI_BackgroundBlur", {
+		Text = "Image Blur",
+		Min = 0,
+		Max = 1,
+		Default = 0,
+		Rounding = 2,
+		Callback = function(value)
+			Library:SetBackground({ Blur = value })
+			Library:SaveTheme()
+		end,
+	})
+
+	module:AddSlider("UI_BackgroundDim", {
+		Text = "Image Dim",
+		Min = 0,
+		Max = 1,
+		Default = 0.4,
+		Rounding = 2,
+		Callback = function(value)
+			Library:SetBackground({ Dim = value })
+			Library:SaveTheme()
+		end,
+	})
+
+	module:AddToggle("UI_Blur", {
+		Text = "Blur Game Behind UI",
+		Default = false,
+		Callback = function(on)
+			Library:SetBlur(on)
+			Library:SaveTheme()
+		end,
+	})
+
+	module:AddSlider("UI_BlurSize", {
+		Text = "Blur Amount",
+		Min = 0,
+		Max = 56,
+		Default = 24,
+		Rounding = 0,
+		Callback = function(size)
+			Library:SetBlur(nil, size)
+			Library:SaveTheme()
+		end,
+	})
+
+	module:AddToggle("UI_Animations", {
+		Text = "UI Animations",
+		Default = true,
+		Callback = function(on)
+			Library.Theme.Animations = on
+			Library:SaveTheme()
+		end,
+	})
+
+	module:AddButton("Reset Theme", function()
+		Library._activePreset = "Dark"
+		Library:ApplyTheme(Library.Presets.Dark)
+		if Options.UI_Accent then
+			Options.UI_Accent:SetValue(Library.Theme.Accent)
+		end
+		if Options.UI_Preset then
+			Options.UI_Preset:SetValue("Dark")
+		end
+		Library:Notify("Theme reset to Dark.")
+	end)
+
+	-- Apply the saved theme on top of the freshly created controls.
+	self:LoadTheme()
+	if Options.UI_Preset and self._activePreset then
+		Options.UI_Preset:SetValue(self._activePreset)
+	end
+	if Options.UI_Accent then
+		Options.UI_Accent:SetValue(self.Theme.Accent)
+	end
+	if Options.UI_Font then
+		Options.UI_Font:SetValue(self.Theme.Font.Name)
+	end
+	if Options.UI_TextScale then
+		Options.UI_TextScale:SetValue(self.Theme.TextScale)
+	end
+	if Options.UI_BackgroundImage then
+		Options.UI_BackgroundImage:SetValue(self.Theme.BackgroundImage or "")
+	end
+	if Options.UI_BackgroundTransparency then
+		Options.UI_BackgroundTransparency:SetValue(self.Theme.BackgroundImageTransparency)
+	end
+	if Options.UI_BackgroundBlur then
+		Options.UI_BackgroundBlur:SetValue(self.Theme.BackgroundImageBlur)
+	end
+	if Options.UI_BackgroundDim then
+		Options.UI_BackgroundDim:SetValue(self.Theme.BackgroundDim)
+	end
+	if Options.UI_Blur then
+		Options.UI_Blur:SetValue(self.Theme.ScreenBlur == true)
+	end
+	if Options.UI_BlurSize then
+		Options.UI_BlurSize:SetValue(self.Theme.BlurSize)
+	end
+	if Options.UI_Animations then
+		Options.UI_Animations:SetValue(self.Theme.Animations ~= false)
+	end
+	return module
 end
 
 --------------------------------------------------------------------------------
