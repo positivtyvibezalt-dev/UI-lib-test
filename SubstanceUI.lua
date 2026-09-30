@@ -481,6 +481,8 @@ local function fs()
 	}
 end
 
+local resolveAsset, resolveIcon -- defined in the theme section; used by AddTab
+
 --------------------------------------------------------------------------------
 -- Control base
 --------------------------------------------------------------------------------
@@ -2108,15 +2110,22 @@ function Library:CreateWindow(config)
 			Parent = navList,
 		})
 		corner(item, 2)
+		local iconImage
 		if opts.Icon then
-			create("ImageLabel", {
-				BackgroundTransparency = 1,
-				Image = opts.Icon,
-				Position = UDim2.fromOffset(10, 10),
-				Size = UDim2.fromOffset(16, 16),
-				Parent = item,
-			})
-		else
+			local asset = resolveIcon(opts.Icon)
+			if asset then
+				iconImage = create("ImageLabel", {
+					BackgroundTransparency = 1,
+					Image = asset,
+					ImageColor3 = MUTED,
+					Position = UDim2.fromOffset(11, 11),
+					Size = UDim2.fromOffset(14, 14),
+					Parent = item,
+				})
+				tab.IconImage = iconImage
+			end
+		end
+		if not iconImage then
 			local glyph = create("Frame", {
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
@@ -2140,10 +2149,16 @@ function Library:CreateWindow(config)
 				if other.GlyphStroke then
 					tween(other.GlyphStroke, 0.12, { Color = th("Accent") })
 				end
+				if other.IconImage then
+					tween(other.IconImage, 0.12, { ImageColor3 = th("Muted") })
+				end
 			end
 			tween(nameLabel, 0.12, { TextColor3 = th("Dark") })
 			if tab.GlyphStroke then
 				tween(tab.GlyphStroke, 0.12, { Color = th("Dark") })
+			end
+			if iconImage then
+				tween(iconImage, 0.12, { ImageColor3 = th("Dark") })
 			end
 			local index = table.find(window.Tabs, tab) or 1
 			navIndicator.Visible = true
@@ -2175,11 +2190,17 @@ function Library:CreateWindow(config)
 		track(item.MouseEnter:Connect(function()
 			if window.ActiveTab ~= tab then
 				tween(nameLabel, 0.08, { TextColor3 = th("Text") })
+				if iconImage then
+					tween(iconImage, 0.08, { ImageColor3 = th("Text") })
+				end
 			end
 		end))
 		track(item.MouseLeave:Connect(function()
 			if window.ActiveTab ~= tab then
 				tween(nameLabel, 0.08, { TextColor3 = th("Muted") })
+				if iconImage then
+					tween(iconImage, 0.08, { ImageColor3 = th("Muted") })
+				end
 			end
 		end))
 		track(item.MouseButton1Click:Connect(function()
@@ -2691,7 +2712,7 @@ function Library:SetBlur(enabled, size)
 end
 
 ---Resolve a user-supplied image reference to an asset id.
-local function resolveAsset(input)
+resolveAsset = function(input)
 	input = tostring(input or ""):gsub("^%s+", ""):gsub("%s+$", "")
 	if #input == 0 then
 		return ""
@@ -2717,6 +2738,85 @@ local function resolveAsset(input)
 		end
 	end
 	return input
+end
+
+--------------------------------------------------------------------------------
+-- Tab icons (embedded PNGs, written to UAPB/icons/ on first use)
+--------------------------------------------------------------------------------
+
+local ICON_DIR = "UAPB/icons"
+
+local ICON_DATA = {
+	combat = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAaUlEQVR42u2XMQ4AIAgD/f+n6+TmAlRoYrtbLoYKrmUVBQCjxY8M8B8ALhor3AKChNqv+xlE1JAKkDWjQYwCVE3C59kdHfLLRiqaijQEG0CzBxxDyZdQYhaMT0OJfUBmI/JSagCpvyFDG8PGDR5nK6WVAAAAAElFTkSuQmCC",
+	movement = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAd0lEQVR42u2WMQ4AIQgE/f+nudZCcw5BXQxTKriEANJaUWTCOv7uZzYh4iMBm7BNfJUtaV8RDAuCpJzUS84AjteBBXJVHAfhfSwkiJEDaTXi7656eoa6wpMBr79mDdAuoLZ55oDEJKzPSGIfuL4RSeyEEltx8Swf7+U/CDhglYMAAAAASUVORK5CYII=",
+	exploit = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAWUlEQVR42u2XMRIAIAjD+P+n8QMucJQyJLNHMwhiBAAUyQ+24DWRLCAP756RhUslqgVHBbrFxiQQQMDeBSfmgH0Sdt4Cq4TkHnT2gfVdYaUjkEBiUoK/xSkexTZRy9W358MAAAAASUVORK5CYII=",
+	visuals = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAZUlEQVR42u2WMQ4AIAgD+f+ncXUwhiiUanqzSjFQMBNCvIhvaAlaLsYvKAt+e/YoOOpu6IFIpikiMroAXpAwD5izaxGwEgM1JIofSKl2yi6g8YHT7MrsGDoLKKYhxT5AsREJ8S0DmSEJIob15nAAAAAASUVORK5CYII=",
+	builder = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAPklEQVR42u3UsREAIAjFUPZfWlcQpcDjpeb4qRIBdGUdkr0tHb/hP4GM5Ms/AgT6CszsgBRLMQECUizFGMUGNeTabC7SXcYAAAAASUVORK5CYII=",
+	tools = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAa0lEQVR42u2WOw4AIAhDvf+lcXFw8BdACkk7CpEXqUprFFVdMkQAWIFT3AVOJu3Wb3G3U9DKtRWQ4isAbY67F7R5X4p/gwgHsJrKbEo4QDoPwG9BuncA/gqGQuw2DPsNX/sOm5Y4E8IBqPLqhZTNT55NrZcAAAAASUVORK5CYII=",
+	friends = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAW0lEQVR42u2VWwoAIAgEvf+l7T8MTHyz81mwDoZGBMBUWKC0eJoEK0gpbrnfLxAugSeQpuB1tncPtNiEt0iLfyClC/xBaXF3CW14iIQl0FXCGuTehTEjCgAYxwEsswIbrzojkwAAAABJRU5ErkJggg==",
+	config = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAN0lEQVR42u3TwREAMAQAQf03TQX5IR67DTDDRQA85ICvw08s0X4WjypDGa5nKFUZyvBUhnKDLgVkgjjyjOE6gQAAAABJRU5ErkJggg==",
+	script = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAO0lEQVR42u3VsQ0AIAhFQfZfGhsrOwqUmLsF/msIEQCT5fY8QIQIEaMi8mDc+L/jlXPLgpZ33BYA3LAA3RYm6A8IoacAAAAASUVORK5CYII=",
+}
+
+local function b64decode(data)
+	local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	data = data:gsub("[^" .. alphabet .. "=]", "")
+	return (data:gsub(".", function(x)
+		if x == "=" then
+			return ""
+		end
+		local bits, f = "", (alphabet:find(x, 1, true) - 1)
+		for i = 6, 1, -1 do
+			bits = bits .. (f % 2 ^ i - f % 2 ^ (i - 1) >= 1 and "1" or "0")
+		end
+		return bits
+	end):gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
+		if #x ~= 8 then
+			return ""
+		end
+		return string.char(tonumber(x, 2))
+	end))
+end
+
+---Resolve an icon to a usable image asset: icon name -> embedded PNG written
+---to UAPB/icons/<name>.png then getcustomasset'd; "rbxassetid://" / paths pass through.
+resolveIcon = function(icon)
+	if type(icon) ~= "string" or #icon == 0 then
+		return nil
+	end
+	if icon:find("rbxasset") or icon:find("://") or icon:match("^%d+$") then
+		return resolveAsset(icon)
+	end
+	local f = fs()
+	local getcustomasset = env.getcustomasset or _G.getcustomasset
+	local path = icon:find("[/\\]") and icon or (ICON_DIR .. "/" .. icon .. ".png")
+	if not (f.isfile and getcustomasset) then
+		return nil
+	end
+	local exists = false
+	pcall(function()
+		exists = f.isfile(path)
+	end)
+	if not exists and f.writefile and f.makefolder and ICON_DATA[icon] then
+		pcall(function()
+			if f.isfolder and not f.isfolder("UAPB") then
+				f.makefolder("UAPB")
+			end
+			if f.isfolder and not f.isfolder(ICON_DIR) then
+				f.makefolder(ICON_DIR)
+			end
+			f.writefile(path, b64decode(ICON_DATA[icon]))
+			exists = true
+		end)
+	end
+	if not exists then
+		return nil
+	end
+	local ok, asset = pcall(getcustomasset, path)
+	if ok and type(asset) == "string" then
+		return asset
+	end
+	return nil
 end
 
 local BLUR_OFFSETS = {
