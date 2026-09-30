@@ -268,7 +268,7 @@ local function tween(object, seconds, props, style)
 	end
 	local t = TweenService:Create(
 		object,
-		TweenInfo.new(seconds or 0.12, style or Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
+		TweenInfo.new(seconds or 0.18, style or Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
 		props
 	)
 	t:Play()
@@ -433,14 +433,154 @@ local function makeCheckbox(parent, props)
 			box.BackgroundColor3 = state and th("Accent") or th("Field")
 			markScale.Scale = state and 1 or 0
 		else
-			tween(box, 0.1, { BackgroundColor3 = state and th("Accent") or th("Field") })
-			tween(markScale, 0.12, { Scale = state and 1 or 0 }, Enum.EasingStyle.Back)
+			tween(box, 0.16, { BackgroundColor3 = state and th("Accent") or th("Field") })
+			tween(markScale, 0.22, { Scale = state and 1 or 0 }, Enum.EasingStyle.Back)
 		end
 	end
 	function api.Get()
 		return state
 	end
 	return api
+end
+
+---Baseline transparency cache so re-fades restore the right target; wiped by ApplyTheme.
+local fadeBase = setmetatable({}, { __mode = "k" })
+
+local FADE_PROPS = {
+	"BackgroundTransparency",
+	"TextTransparency",
+	"TextStrokeTransparency",
+	"ImageTransparency",
+	"Transparency",
+}
+
+local function collectFade(object, out)
+	for _, prop in next, FADE_PROPS do
+		local ok, value = pcall(function()
+			return object[prop]
+		end)
+		if ok and type(value) == "number" then
+			local store = fadeBase[object]
+			if not store then
+				store = {}
+				fadeBase[object] = store
+			end
+			if store[prop] == nil then
+				store[prop] = value
+			end
+			table.insert(out, { object = object, prop = prop, base = store[prop] })
+		end
+	end
+end
+
+---Fade an element's whole subtree back to its baseline transparency.
+local function fadeIn(root, seconds, delaySeconds)
+	if Library.Theme.Animations == false then
+		return
+	end
+	local targets = {}
+	collectFade(root, targets)
+	for _, descendant in next, root:GetDescendants() do
+		collectFade(descendant, targets)
+	end
+	for _, target in next, targets do
+		if target.base < 1 then
+			pcall(function()
+				target.object[target.prop] = 1
+			end)
+		end
+	end
+	local function run()
+		for _, target in next, targets do
+			if target.base < 1 then
+				tween(target.object, seconds, { [target.prop] = target.base })
+			end
+		end
+	end
+	if delaySeconds and delaySeconds > 0 then
+		task.delay(delaySeconds, run)
+	else
+		run()
+	end
+end
+
+---Expanding accent dot on hover; only safe on containers WITHOUT a UIListLayout.
+local function attachRipple(frame)
+	track(frame.MouseEnter:Connect(function(x, y)
+		if Library.Theme.Animations == false then
+			return
+		end
+		local px, py
+		local ok, abs = pcall(function()
+			return frame.AbsolutePosition
+		end)
+		if ok and abs and x and y then
+			px = x - abs.X
+			py = y - abs.Y
+		else
+			local okSize, size = pcall(function()
+				return frame.AbsoluteSize
+			end)
+			px = okSize and size.X / 2 or 0
+			py = okSize and size.Y / 2 or 0
+		end
+		local dot = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = ACCENT,
+			BackgroundTransparency = 0.85,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(px, py),
+			Size = UDim2.fromOffset(0, 0),
+			Parent = frame,
+		})
+		create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = dot })
+		local okSize, size = pcall(function()
+			return frame.AbsoluteSize
+		end)
+		local reach = (okSize and math.max(size.X, size.Y) or 60) * 2.4
+		local anim = tween(
+			dot,
+			0.55,
+			{ Size = UDim2.fromOffset(reach, reach), BackgroundTransparency = 1 },
+			Enum.EasingStyle.Quad
+		)
+		if anim then
+			anim.Completed:Connect(function()
+				dot:Destroy()
+			end)
+		else
+			dot:Destroy()
+		end
+	end))
+end
+
+---Light sweep across a card; UIGradient isn't a GuiObject so list layouts ignore it.
+local function attachSheen(card)
+	track(card.MouseEnter:Connect(function()
+		if Library.Theme.Animations == false then
+			return
+		end
+		local gradient = create("UIGradient", {
+			Offset = Vector2.new(-1.1, 0),
+			Rotation = 65,
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.42, 1),
+				NumberSequenceKeypoint.new(0.5, 0.7),
+				NumberSequenceKeypoint.new(0.58, 1),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+			Parent = card,
+		})
+		local anim = tween(gradient, 0.5, { Offset = Vector2.new(1.1, 0) }, Enum.EasingStyle.Quad)
+		if anim then
+			anim.Completed:Connect(function()
+				gradient:Destroy()
+			end)
+		else
+			gradient:Destroy()
+		end
+	end))
 end
 
 ---Format a KeyCode-ish name for badges: RightShift -> "RIGHT SHIFT", MouseButton1 -> "MB1".
@@ -643,6 +783,9 @@ local function rebuildKeybindList()
 	end
 end
 
+---Re-render the keybind list (bound by feature toggles and the UI filter).
+Library.RefreshKeybinds = rebuildKeybindList
+
 --------------------------------------------------------------------------------
 -- Container (settings grid)
 --------------------------------------------------------------------------------
@@ -681,9 +824,10 @@ function Container:_card(areaHeight, title, description)
 	list(card, 3)
 
 	local order = 0
+	local titleLabel
 	if title and #tostring(title) > 0 then
 		order = order + 1
-		local titleLabel = mklabel(card, {
+		titleLabel = mklabel(card, {
 			AutomaticSize = Enum.AutomaticSize.Y,
 			LayoutOrder = order,
 			Size = UDim2.new(1, 0, 0, 0),
@@ -726,6 +870,15 @@ function Container:_card(areaHeight, title, description)
 	self._controlCount = (self._controlCount or 0) + 1
 	if self._placeholder then
 		self._placeholder.Visible = false
+	end
+	attachSheen(card)
+	if titleLabel then
+		track(card.MouseEnter:Connect(function()
+			tween(titleLabel, 0.18, { TextColor3 = th("Accent") })
+		end))
+		track(card.MouseLeave:Connect(function()
+			tween(titleLabel, 0.18, { TextColor3 = th("Text") })
+		end))
 	end
 	if self.OnCard then
 		self.OnCard(card)
@@ -1718,9 +1871,9 @@ function Library:Toggle()
 				finalSize.X.Scale, math.floor(finalSize.X.Offset * 0.94),
 				finalSize.Y.Scale, math.floor(finalSize.Y.Offset * 0.94)
 			)
-			tween(outer, 0.15, { Size = finalSize }, Enum.EasingStyle.Exponential)
+			tween(outer, 0.28, { Size = finalSize }, Enum.EasingStyle.Exponential)
 		else
-			local t = tween(outer, 0.1, {
+			local t = tween(outer, 0.2, {
 				Size = UDim2.new(
 					finalSize.X.Scale, math.floor(finalSize.X.Offset * 0.94),
 					finalSize.Y.Scale, math.floor(finalSize.Y.Offset * 0.94)
@@ -1810,38 +1963,6 @@ function Library:CreateWindow(config)
 		TextXAlignment = Enum.TextXAlignment.Center,
 	})
 	bold(kbTitle)
-	-- "ON" filter: show only keybinds whose feature is currently enabled
-	local kbFilter = create("TextButton", {
-		AnchorPoint = Vector2.new(1, 0),
-		AutoButtonColor = false,
-		BackgroundTransparency = 1,
-		Position = UDim2.new(1, -8, 0, 0),
-		Size = UDim2.new(0, 34, 1, 0),
-		Text = "",
-		Parent = kbHeader,
-	})
-	local kbFilterBox = create("Frame", {
-		AnchorPoint = Vector2.new(0, 0.5),
-		BackgroundColor3 = DARK,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Position = UDim2.new(0, 0, 0.5, 0),
-		Size = UDim2.fromOffset(8, 8),
-		Parent = kbFilter,
-	})
-	stroke(kbFilterBox, DARK, 1)
-	mklabel(kbFilter, {
-		Position = UDim2.fromOffset(12, 0),
-		Size = UDim2.new(1, -12, 1, 0),
-		Text = "ON",
-		TextColor3 = DARK,
-		TextSize = 9,
-	})
-	track(kbFilter.MouseButton1Click:Connect(function()
-		Library.KeybindListActiveOnly = not Library.KeybindListActiveOnly
-		kbFilterBox.BackgroundTransparency = Library.KeybindListActiveOnly and 0 or 1
-		rebuildKeybindList()
-	end))
 	local kbEntries = create("Frame", {
 		Name = "Entries",
 		AutomaticSize = Enum.AutomaticSize.Y,
@@ -2078,7 +2199,17 @@ function Library:CreateWindow(config)
 	}, "Panel")
 	corner(settingsPane, 2)
 
-	local window = { Tabs = {}, Outer = outer, Modules = {}, ActiveTab = nil }
+	local settingsHint = mklabel(settingsPane, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.45),
+		Size = UDim2.fromOffset(220, 18),
+		Text = "Select a module",
+		TextColor3 = MUTED,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+
+	local window = { Tabs = {}, Outer = outer, Modules = {}, ActiveTab = nil, SettingsHint = settingsHint }
 
 	local function updateSearchPlaceholder()
 		local user = tostring(config.User or (localPlayer and localPlayer.Name) or "user"):lower():gsub("%s", "-")
@@ -2119,6 +2250,7 @@ function Library:CreateWindow(config)
 	window.ApplyModuleFilter = applyModuleFilter
 
 	local function selectModule(module)
+		local changed = window.SelectedModule ~= module
 		window.SelectedModule = module
 		for _, other in next, window.Modules do
 			other:SetSelected(other == module)
@@ -2130,6 +2262,18 @@ function Library:CreateWindow(config)
 		end
 		if module then
 			module.Grid.Visible = true
+			if changed and Library.Theme.Animations ~= false then
+				for index, column in ipairs(module.Columns) do
+					local base = column.Position
+					column.Position =
+						UDim2.new(base.X.Scale, base.X.Offset - 18, base.Y.Scale, base.Y.Offset)
+					tween(column, 0.3, { Position = base }, Enum.EasingStyle.Exponential)
+					fadeIn(column, 0.3, (index - 1) * 0.07)
+				end
+			end
+		end
+		if window.SettingsHint then
+			window.SettingsHint.Visible = module == nil
 		end
 		updateSearchPlaceholder()
 	end
@@ -2184,62 +2328,61 @@ function Library:CreateWindow(config)
 		})
 
 		function tab:Show()
+			local switching = window.ActiveTab ~= tab
 			for _, other in next, window.Tabs do
-				tween(other.NameLabel, 0.12, { TextColor3 = th("Muted") })
+				tween(other.NameLabel, 0.2, { TextColor3 = th("Muted") })
 				if other.GlyphStroke then
-					tween(other.GlyphStroke, 0.12, { Color = th("Accent") })
+					tween(other.GlyphStroke, 0.2, { Color = th("Accent") })
 				end
 				if other.IconImage then
-					tween(other.IconImage, 0.12, { ImageColor3 = th("Muted") })
+					tween(other.IconImage, 0.2, { ImageColor3 = th("Muted") })
 				end
 			end
-			tween(nameLabel, 0.12, { TextColor3 = th("Dark") })
+			tween(nameLabel, 0.2, { TextColor3 = th("Dark") })
 			if tab.GlyphStroke then
-				tween(tab.GlyphStroke, 0.12, { Color = th("Dark") })
+				tween(tab.GlyphStroke, 0.2, { Color = th("Dark") })
 			end
 			if iconImage then
-				tween(iconImage, 0.12, { ImageColor3 = th("Dark") })
+				tween(iconImage, 0.2, { ImageColor3 = th("Dark") })
 			end
 			local index = table.find(window.Tabs, tab) or 1
 			navIndicator.Visible = true
-			tween(navIndicator, 0.14, { Position = UDim2.fromOffset(6, 8 + (index - 1) * 38) }, Enum.EasingStyle.Exponential)
+			tween(navIndicator, 0.26, { Position = UDim2.fromOffset(6, 8 + (index - 1) * 38) }, Enum.EasingStyle.Exponential)
 			for _, s in next, navStripes do
 				s.BackgroundColor3 = th("Dark")
 			end
 			window.ActiveTab = tab
 			applyModuleFilter()
 			updateSearchPlaceholder()
-			if
-				window.SelectedModule
-				and window.SelectedModule.Tab ~= tab
-				and searchField.Text == ""
-			then
-				selectModule(nil)
-			end
-			if
-				searchField.Text == ""
-				and (not window.SelectedModule or window.SelectedModule.Tab ~= tab)
-			then
-				if tab.Modules[1] then
-					selectModule(tab.Modules[1])
-				else
-					selectModule(nil)
+			-- settings pane keeps the previously selected module; only a click changes it
+			if switching and Library.Theme.Animations ~= false then
+				local pad = moduleColumn:FindFirstChildOfClass("UIPadding")
+				if pad then
+					pad.PaddingTop = UDim.new(0, 24)
+					tween(pad, 0.35, { PaddingTop = UDim.new(0, 8) }, Enum.EasingStyle.Exponential)
+				end
+				local shown = 0
+				for _, module in next, tab.Modules do
+					if module.Card.Visible then
+						fadeIn(module.Card, 0.3, shown * 0.04)
+						shown = shown + 1
+					end
 				end
 			end
 		end
 		track(item.MouseEnter:Connect(function()
 			if window.ActiveTab ~= tab then
-				tween(nameLabel, 0.08, { TextColor3 = th("Text") })
+				tween(nameLabel, 0.15, { TextColor3 = th("Text") })
 				if iconImage then
-					tween(iconImage, 0.08, { ImageColor3 = th("Text") })
+					tween(iconImage, 0.15, { ImageColor3 = th("Text") })
 				end
 			end
 		end))
 		track(item.MouseLeave:Connect(function()
 			if window.ActiveTab ~= tab then
-				tween(nameLabel, 0.08, { TextColor3 = th("Muted") })
+				tween(nameLabel, 0.15, { TextColor3 = th("Muted") })
 				if iconImage then
-					tween(iconImage, 0.08, { ImageColor3 = th("Muted") })
+					tween(iconImage, 0.15, { ImageColor3 = th("Muted") })
 				end
 			end
 		end))
@@ -2346,6 +2489,7 @@ function Library:CreateWindow(config)
 			AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundColor3 = CARD,
 			BorderSizePixel = 0,
+			ClipsDescendants = true,
 			Size = UDim2.new(1, 0, 0, 0),
 			Text = "",
 			Visible = false,
@@ -2448,16 +2592,26 @@ function Library:CreateWindow(config)
 			Parent = bottomRow,
 		})
 
+		local hovered = false
+		local selected = false
+		local function refreshTitle()
+			tween(
+				titleLabel,
+				0.2,
+				{ TextColor3 = hovered and th("Accent") or (selected and th("Text") or th("Muted")) }
+			)
+		end
 		function module:SetSelected(on)
-			local bracketColor = on and th("Accent") or th("Dim")
+			selected = on == true
+			local bracketColor = selected and th("Accent") or th("Dim")
 			for _, f in next, brackets do
-				tween(f, 0.12, { BackgroundColor3 = bracketColor })
+				tween(f, 0.2, { BackgroundColor3 = bracketColor })
 			end
 			for _, f in next, gearBrackets do
-				tween(f, 0.12, { BackgroundColor3 = bracketColor })
+				tween(f, 0.2, { BackgroundColor3 = bracketColor })
 			end
-			tween(titleLabel, 0.12, { TextColor3 = on and th("Text") or th("Muted") })
-			tween(gearIcon, 0.12, { ImageColor3 = on and th("Accent") or th("Text") })
+			refreshTitle()
+			tween(gearIcon, 0.2, { ImageColor3 = selected and th("Accent") or th("Text") })
 		end
 
 		function module:AddKeyPicker(keyId, keyInfo)
@@ -2481,14 +2635,20 @@ function Library:CreateWindow(config)
 		track(card.MouseButton1Click:Connect(function()
 			selectModule(module)
 		end))
+		attachRipple(card)
+		track(card.MouseEnter:Connect(function()
+			hovered = true
+			refreshTitle()
+		end))
+		track(card.MouseLeave:Connect(function()
+			hovered = false
+			refreshTitle()
+		end))
 
 		module.Card = card
 		table.insert(tab.Modules, module)
 		table.insert(window.Modules, module)
 		applyModuleFilter()
-		if window.ActiveTab == tab and not window.SelectedModule then
-			selectModule(module)
-		end
 		return module
 	end
 
@@ -2502,7 +2662,7 @@ function Library:CreateWindow(config)
 		outer.Size.X.Scale, math.floor(outer.Size.X.Offset * 0.94),
 		outer.Size.Y.Scale, math.floor(outer.Size.Y.Offset * 0.94)
 	)
-	tween(outer, 0.15, { Size = self._windowSize }, Enum.EasingStyle.Exponential)
+	tween(outer, 0.28, { Size = self._windowSize }, Enum.EasingStyle.Exponential)
 	return window
 end
 
@@ -2917,6 +3077,9 @@ function Library:ApplyTheme(partial, skipSave)
 		self.Theme[key] = value
 	end
 	local theme = self.Theme
+	for object in next, fadeBase do
+		fadeBase[object] = nil
+	end
 
 	-- Legacy fields (InfoLogger/AnimationVisualizer read these).
 	self.FontColor = theme.Text
