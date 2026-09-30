@@ -504,57 +504,8 @@ local function fadeIn(root, seconds, delaySeconds)
 	end
 end
 
----Expanding accent dot on hover; only safe on containers WITHOUT a UIListLayout.
-local function attachRipple(frame)
-	track(frame.MouseEnter:Connect(function(x, y)
-		if Library.Theme.Animations == false then
-			return
-		end
-		local px, py
-		local ok, abs = pcall(function()
-			return frame.AbsolutePosition
-		end)
-		if ok and abs and x and y then
-			px = x - abs.X
-			py = y - abs.Y
-		else
-			local okSize, size = pcall(function()
-				return frame.AbsoluteSize
-			end)
-			px = okSize and size.X / 2 or 0
-			py = okSize and size.Y / 2 or 0
-		end
-		local dot = create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = ACCENT,
-			BackgroundTransparency = 0.85,
-			BorderSizePixel = 0,
-			Position = UDim2.fromOffset(px, py),
-			Size = UDim2.fromOffset(0, 0),
-			Parent = frame,
-		})
-		create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = dot })
-		local okSize, size = pcall(function()
-			return frame.AbsoluteSize
-		end)
-		local reach = (okSize and math.max(size.X, size.Y) or 60) * 2.4
-		local anim = tween(
-			dot,
-			0.55,
-			{ Size = UDim2.fromOffset(reach, reach), BackgroundTransparency = 1 },
-			Enum.EasingStyle.Quad
-		)
-		if anim then
-			anim.Completed:Connect(function()
-				dot:Destroy()
-			end)
-		else
-			dot:Destroy()
-		end
-	end))
-end
-
----Light sweep across a card; UIGradient isn't a GuiObject so list layouts ignore it.
+---Light sweep across a card; UIGradient isn't a GuiObject so list layouts and
+---AutomaticSize ignore it (a Frame ripple would stretch auto-sized cards).
 local function attachSheen(card)
 	track(card.MouseEnter:Connect(function()
 		if Library.Theme.Animations == false then
@@ -572,7 +523,7 @@ local function attachSheen(card)
 			}),
 			Parent = card,
 		})
-		local anim = tween(gradient, 0.5, { Offset = Vector2.new(1.1, 0) }, Enum.EasingStyle.Quad)
+		local anim = tween(gradient, 0.7, { Offset = Vector2.new(1.1, 0) }, Enum.EasingStyle.Quad)
 		if anim then
 			anim.Completed:Connect(function()
 				gradient:Destroy()
@@ -2267,8 +2218,8 @@ function Library:CreateWindow(config)
 					local base = column.Position
 					column.Position =
 						UDim2.new(base.X.Scale, base.X.Offset - 18, base.Y.Scale, base.Y.Offset)
-					tween(column, 0.3, { Position = base }, Enum.EasingStyle.Exponential)
-					fadeIn(column, 0.3, (index - 1) * 0.07)
+					tween(column, 0.4, { Position = base }, Enum.EasingStyle.Exponential)
+					fadeIn(column, 0.4, (index - 1) * 0.09)
 				end
 			end
 		end
@@ -2359,12 +2310,12 @@ function Library:CreateWindow(config)
 				local pad = moduleColumn:FindFirstChildOfClass("UIPadding")
 				if pad then
 					pad.PaddingTop = UDim.new(0, 24)
-					tween(pad, 0.35, { PaddingTop = UDim.new(0, 8) }, Enum.EasingStyle.Exponential)
+					tween(pad, 0.45, { PaddingTop = UDim.new(0, 8) }, Enum.EasingStyle.Exponential)
 				end
 				local shown = 0
 				for _, module in next, tab.Modules do
 					if module.Card.Visible then
-						fadeIn(module.Card, 0.3, shown * 0.04)
+						fadeIn(module.Card, 0.4, shown * 0.05)
 						shown = shown + 1
 					end
 				end
@@ -2597,7 +2548,7 @@ function Library:CreateWindow(config)
 		local function refreshTitle()
 			tween(
 				titleLabel,
-				0.2,
+				0.28,
 				{ TextColor3 = hovered and th("Accent") or (selected and th("Text") or th("Muted")) }
 			)
 		end
@@ -2605,13 +2556,13 @@ function Library:CreateWindow(config)
 			selected = on == true
 			local bracketColor = selected and th("Accent") or th("Dim")
 			for _, f in next, brackets do
-				tween(f, 0.2, { BackgroundColor3 = bracketColor })
+				tween(f, 0.28, { BackgroundColor3 = bracketColor })
 			end
 			for _, f in next, gearBrackets do
-				tween(f, 0.2, { BackgroundColor3 = bracketColor })
+				tween(f, 0.28, { BackgroundColor3 = bracketColor })
 			end
 			refreshTitle()
-			tween(gearIcon, 0.2, { ImageColor3 = selected and th("Accent") or th("Text") })
+			tween(gearIcon, 0.28, { ImageColor3 = selected and th("Accent") or th("Text") })
 		end
 
 		function module:AddKeyPicker(keyId, keyInfo)
@@ -2635,7 +2586,7 @@ function Library:CreateWindow(config)
 		track(card.MouseButton1Click:Connect(function()
 			selectModule(module)
 		end))
-		attachRipple(card)
+		attachSheen(card)
 		track(card.MouseEnter:Connect(function()
 			hovered = true
 			refreshTitle()
