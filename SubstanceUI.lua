@@ -84,6 +84,7 @@ Library.Theme = {
 	Dim = DIM,
 	Dark = DARK,
 	Badge = BADGE,
+	Sheen = Color3.fromRGB(255, 255, 255),
 	Font = FONT,
 	TextScale = 1,
 	WindowTransparency = 0,
@@ -114,6 +115,7 @@ Library.Presets = {
 		Dim = DIM,
 		Dark = DARK,
 		Badge = BADGE,
+		Sheen = Color3.fromRGB(255, 255, 255),
 		WindowTransparency = 0,
 		PanelTransparency = 0,
 		CardTransparency = 0,
@@ -134,6 +136,7 @@ Library.Presets = {
 		Dim = DIM,
 		Dark = DARK,
 		Badge = BADGE,
+		Sheen = Color3.fromRGB(255, 255, 255),
 		WindowTransparency = 0.4,
 		PanelTransparency = 0.45,
 		CardTransparency = 0.35,
@@ -154,6 +157,7 @@ Library.Presets = {
 		Dim = Color3.fromRGB(66, 72, 95),
 		Dark = Color3.fromRGB(14, 16, 26),
 		Badge = Color3.fromRGB(232, 235, 245),
+		Sheen = Color3.fromRGB(200, 215, 255),
 		WindowTransparency = 0,
 		PanelTransparency = 0,
 		CardTransparency = 0,
@@ -174,6 +178,7 @@ Library.Presets = {
 		Dim = Color3.fromRGB(96, 60, 68),
 		Dark = Color3.fromRGB(24, 10, 14),
 		Badge = Color3.fromRGB(245, 232, 235),
+		Sheen = Color3.fromRGB(255, 200, 208),
 		WindowTransparency = 0,
 		PanelTransparency = 0,
 		CardTransparency = 0,
@@ -194,6 +199,7 @@ Library.Presets = {
 		Dim = Color3.fromRGB(64, 92, 76),
 		Dark = Color3.fromRGB(14, 24, 18),
 		Badge = Color3.fromRGB(232, 245, 238),
+		Sheen = Color3.fromRGB(190, 255, 220),
 		WindowTransparency = 0,
 		PanelTransparency = 0,
 		CardTransparency = 0,
@@ -214,6 +220,7 @@ Library.Presets = {
 		Dim = Color3.fromRGB(82, 66, 108),
 		Dark = Color3.fromRGB(20, 12, 28),
 		Badge = Color3.fromRGB(240, 232, 250),
+		Sheen = Color3.fromRGB(225, 200, 255),
 		WindowTransparency = 0,
 		PanelTransparency = 0,
 		CardTransparency = 0,
@@ -511,9 +518,17 @@ local function attachSheen(card)
 		if Library.Theme.Animations == false then
 			return
 		end
+		local sheenColor = th("Sheen") or Color3.new(1, 1, 1)
 		local gradient = create("UIGradient", {
 			Offset = Vector2.new(-1.1, 0),
 			Rotation = 65,
+			Color = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+				NumberSequenceKeypoint.new(0.42, Color3.new(1, 1, 1)),
+				NumberSequenceKeypoint.new(0.5, sheenColor),
+				NumberSequenceKeypoint.new(0.58, Color3.new(1, 1, 1)),
+				NumberSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
+			}),
 			Transparency = NumberSequence.new({
 				NumberSequenceKeypoint.new(0, 1),
 				NumberSequenceKeypoint.new(0.42, 1),
@@ -3114,6 +3129,8 @@ function Library:SaveTheme()
 		preset = self._activePreset,
 		accent = { r = to255(theme.Accent.R), g = to255(theme.Accent.G), b = to255(theme.Accent.B) },
 		badge = { r = to255(theme.Badge.R), g = to255(theme.Badge.G), b = to255(theme.Badge.B) },
+		sheen = theme.Sheen
+			and { r = to255(theme.Sheen.R), g = to255(theme.Sheen.G), b = to255(theme.Sheen.B) },
 		font = theme.Font.Name,
 		textScale = theme.TextScale,
 		windowTransparency = theme.WindowTransparency,
@@ -3156,6 +3173,9 @@ function Library:LoadTheme()
 	end
 	if type(data.badge) == "table" then
 		partial.Badge = Color3.fromRGB(data.badge.r or 0, data.badge.g or 0, data.badge.b or 0)
+	end
+	if type(data.sheen) == "table" then
+		partial.Sheen = Color3.fromRGB(data.sheen.r or 0, data.sheen.g or 0, data.sheen.b or 0)
 	end
 	if data.font and Enum.Font[data.font] then
 		partial.Font = Enum.Font[data.font]
@@ -3218,6 +3238,9 @@ function Library:AddThemeModule(tab, opts)
 				if Options.UI_Badge then
 					Options.UI_Badge:SetValue(Library.Theme.Badge)
 				end
+				if Options.UI_Sheen then
+					Options.UI_Sheen:SetValue(Library.Theme.Sheen)
+				end
 			end
 		end,
 	})
@@ -3240,6 +3263,16 @@ function Library:AddThemeModule(tab, opts)
 		Callback = function(color)
 			Library._activePreset = nil
 			Library:ApplyTheme({ Badge = color })
+		end,
+	})
+
+	module:AddColorPicker("UI_Sheen", {
+		Text = "Sheen Color",
+		Tooltip = "Color of the hover sweep on cards.",
+		Default = self.Theme.Sheen,
+		Callback = function(color)
+			Library._activePreset = nil
+			Library:ApplyTheme({ Sheen = color })
 		end,
 	})
 
@@ -3389,6 +3422,9 @@ function Library:AddThemeModule(tab, opts)
 		if Options.UI_Badge then
 			Options.UI_Badge:SetValue(Library.Theme.Badge)
 		end
+		if Options.UI_Sheen then
+			Options.UI_Sheen:SetValue(Library.Theme.Sheen)
+		end
 		if Options.UI_Preset then
 			Options.UI_Preset:SetValue("Dark")
 		end
@@ -3405,6 +3441,9 @@ function Library:AddThemeModule(tab, opts)
 	end
 	if Options.UI_Badge then
 		Options.UI_Badge:SetValue(self.Theme.Badge)
+	end
+	if Options.UI_Sheen then
+		Options.UI_Sheen:SetValue(self.Theme.Sheen)
 	end
 	if Options.UI_Font then
 		Options.UI_Font:SetValue(self.Theme.Font.Name)
