@@ -43,12 +43,14 @@ local Library = {
 	OutlineColor = OUTLINE,
 	Font = FONT,
 	Black = Color3.new(0, 0, 0),
-	Registry = {},
-	RegistryMap = {},
+	-- Weak-keyed so destroyed instances (popup rows, rebuilt keybind labels,
+	-- transient notification frames) drop out instead of being pinned forever.
+	Registry = setmetatable({}, { __mode = "k" }),
+	RegistryMap = setmetatable({}, { __mode = "k" }),
 	Signals = {},
 	KeyPickers = {},
-	ThemeRegistry = {},
-	TitleLabels = {},
+	ThemeRegistry = setmetatable({}, { __mode = "k" }),
+	TitleLabels = setmetatable({}, { __mode = "k" }),
 	Controls = {},
 	Unloaded = false,
 }
@@ -98,6 +100,8 @@ Library.Theme = {
 	ScreenBlur = false,
 	BlurSize = 24,
 	Animations = true,
+	HoverGlow = ACCENT,
+	HoverGlowEnabled = true,
 }
 
 Library.Presets = {
@@ -255,9 +259,15 @@ local function roleFor(value)
 	return nil
 end
 
----Register an instance property as theme-driven.
+---Register an instance property as theme-driven. ThemeRegistry is weak-keyed by
+---object so entries for destroyed instances are collected automatically.
 local function tprop(object, property, role, base)
-	table.insert(Library.ThemeRegistry, { object, property, role, base })
+	local list = Library.ThemeRegistry[object]
+	if not list then
+		list = {}
+		Library.ThemeRegistry[object] = list
+	end
+	table.insert(list, { property, role, base })
 end
 
 ---Read a theme color (live).
@@ -376,7 +386,7 @@ local function bold(object)
 	if not ok then
 		object.Font = Library.Theme.Font
 	end
-	table.insert(Library.TitleLabels, object)
+	Library.TitleLabels[object] = true
 end
 
 local function track(signal)
@@ -511,41 +521,86 @@ local function fadeIn(root, seconds, delaySeconds)
 	end
 end
 
----Light sweep across a card; UIGradient isn't a GuiObject so list layouts and
----AutomaticSize ignore it (a Frame ripple would stretch auto-sized cards).
+---Cards that host their controls through a UIListLayout get an inner content
+---frame so the sheen overlay (a GuiObject) is never counted by that layout.
+local cardContent = setmetatable({}, { __mode = "k" })
+
+---Light sweep across a card. Implemented as a clipped overlay band rather than a
+---UIGradient: gradients multiply the background color, so they cannot brighten
+---a dark card — the old gradient sweep rendered completely invisible.
 local function attachSheen(card)
+	local overlay = nil
 	track(card.MouseEnter:Connect(function()
 		if Library.Theme.Animations == false then
 			return
 		end
-		local sheenColor = th("Sheen") or Color3.new(1, 1, 1)
-		local gradient = create("UIGradient", {
-			Offset = Vector2.new(-1.1, 0),
+		if not overlay or not overlay.Parent then
+			overlay = create("Frame", {
+				Name = "SheenOverlay",
+				Active = false,
+				BackgroundTransparency = 1,
+				ClipsDescendants = true,
+				ZIndex = 50,
+				Parent = card,
+			})
+			corner(overlay, 2)
+		end
+		-- Offset size (not scale) so the card's AutomaticSize never feeds back.
+		overlay.Size = UDim2.fromOffset(card.AbsoluteSize.X, card.AbsoluteSize.Y)
+
+		local band = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = th("Sheen") or Color3.new(1, 1, 1),
+			BorderSizePixel = 0,
+			Position = UDim2.fromScale(-0.35, 0.5),
 			Rotation = 65,
-			Color = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-				NumberSequenceKeypoint.new(0.42, Color3.new(1, 1, 1)),
-				NumberSequenceKeypoint.new(0.5, sheenColor),
-				NumberSequenceKeypoint.new(0.58, Color3.new(1, 1, 1)),
-				NumberSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
-			}),
+			Size = UDim2.new(0.35, 0, 3, 0),
+			ZIndex = 50,
+			Parent = overlay,
+		})
+		create("UIGradient", {
 			Transparency = NumberSequence.new({
 				NumberSequenceKeypoint.new(0, 1),
-				NumberSequenceKeypoint.new(0.42, 1),
-				NumberSequenceKeypoint.new(0.5, 0.7),
-				NumberSequenceKeypoint.new(0.58, 1),
+				NumberSequenceKeypoint.new(0.35, 0.82),
+				NumberSequenceKeypoint.new(0.5, 0.62),
+				NumberSequenceKeypoint.new(0.65, 0.82),
 				NumberSequenceKeypoint.new(1, 1),
 			}),
-			Parent = card,
+			Parent = band,
 		})
-		local anim = tween(gradient, 0.7, { Offset = Vector2.new(1.1, 0) }, Enum.EasingStyle.Quad)
+		local anim = tween(band, 0.55, { Position = UDim2.fromScale(1.35, 0.5) }, Enum.EasingStyle.Quad)
 		if anim then
 			anim.Completed:Connect(function()
-				gradient:Destroy()
+				band:Destroy()
 			end)
 		else
-			gradient:Destroy()
+			band:Destroy()
 		end
+	end))
+end
+
+---Weak-keyed set of every hover-glow stroke so the toggle can hide them all.
+Library._hoverGlows = setmetatable({}, { __mode = "k" })
+
+---Subtle editable-color outline that fades in around a card while hovered.
+local function attachHoverGlow(card)
+	local glow = create("UIStroke", {
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Color = th("HoverGlow") or ACCENT,
+		Thickness = 1.5,
+		Transparency = 1,
+		Parent = card,
+	})
+	tprop(glow, "Color", "HoverGlow")
+	Library._hoverGlows[glow] = true
+	track(card.MouseEnter:Connect(function()
+		if Library.Theme.HoverGlowEnabled == false then
+			return
+		end
+		tween(glow, 0.22, { Transparency = 0.35 })
+	end))
+	track(card.MouseLeave:Connect(function()
+		tween(glow, 0.3, { Transparency = 1 })
 	end))
 end
 
@@ -655,6 +710,15 @@ end
 
 local Popups, PopupOverlay
 
+---Connections belonging to the currently-open popup; disconnected on close so
+---every dropdown/color-picker open doesn't leak into Library.Signals forever.
+local popupSignals = {}
+
+local function trackPopup(signal)
+	table.insert(popupSignals, signal)
+	return signal
+end
+
 local function ensurePopups()
 	if Popups then
 		return
@@ -680,6 +744,13 @@ local function ensurePopups()
 end
 
 function Library:ClosePopup()
+	for _, signal in next, popupSignals do
+		pcall(function()
+			signal:Disconnect()
+		end)
+	end
+	table.clear(popupSignals)
+
 	if self.ActivePopup then
 		self.ActivePopup:Destroy()
 		self.ActivePopup = nil
@@ -786,14 +857,25 @@ function Container:_card(areaHeight, title, description)
 		Parent = self.Columns[shortest],
 	}, "Card")
 	corner(card, 2)
-	padding(card, 10, 10, 10, 10)
-	list(card, 3)
+
+	-- Inner layout host: keeps the UIListLayout off `card` so overlay children
+	-- (the sheen sweep) don't get counted as rows.
+	local content = create("Frame", {
+		Name = "Content",
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 0),
+		Parent = card,
+	})
+	padding(content, 10, 10, 10, 10)
+	list(content, 3)
+	cardContent[card] = content
 
 	local order = 0
 	local titleLabel
 	if title and #tostring(title) > 0 then
 		order = order + 1
-		titleLabel = mklabel(card, {
+		titleLabel = mklabel(content, {
 			AutomaticSize = Enum.AutomaticSize.Y,
 			LayoutOrder = order,
 			Size = UDim2.new(1, 0, 0, 0),
@@ -805,7 +887,7 @@ function Container:_card(areaHeight, title, description)
 	end
 	if description and #tostring(description) > 0 then
 		order = order + 1
-		mklabel(card, {
+		mklabel(content, {
 			AutomaticSize = Enum.AutomaticSize.Y,
 			LayoutOrder = order,
 			Size = UDim2.new(1, 0, 0, 0),
@@ -823,7 +905,7 @@ function Container:_card(areaHeight, title, description)
 			BackgroundTransparency = 1,
 			LayoutOrder = order,
 			Size = UDim2.new(1, 0, 0, areaHeight),
-			Parent = card,
+			Parent = content,
 		})
 	end
 
@@ -838,6 +920,7 @@ function Container:_card(areaHeight, title, description)
 		self._placeholder.Visible = false
 	end
 	attachSheen(card)
+	attachHoverGlow(card)
 	if titleLabel then
 		track(card.MouseEnter:Connect(function()
 			tween(titleLabel, 0.18, { TextColor3 = th("Accent") })
@@ -860,8 +943,9 @@ function Container:AddLabel(text)
 	text = tostring(text)
 	local long = #text > 28
 	local card = self:_card(0)
+	local host = cardContent[card] or card
 	local object = newControl(nil, { Default = text }, "label")
-	object.Label = mklabel(card, {
+	object.Label = mklabel(host, {
 		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = 1,
 		Size = UDim2.new(1, 0, 0, 0),
@@ -888,7 +972,7 @@ function Container:AddLabel(text)
 				BackgroundTransparency = 1,
 				LayoutOrder = 2,
 				Size = UDim2.new(1, 0, 0, 22),
-				Parent = card,
+				Parent = host,
 			})
 		end
 		local picker = self.Parent:_makeKeyPicker(keyId, info or {}, nil)
@@ -1272,7 +1356,7 @@ function Container:AddDropdown(id, info)
 				TextSize = 11,
 				ZIndex = 102,
 			})
-			track(row.MouseButton1Click:Connect(function()
+			trackPopup(row.MouseButton1Click:Connect(function()
 				if info.Multi then
 					local set = control.Value or {}
 					set[value] = not set[value] and true or nil
@@ -1601,12 +1685,12 @@ function Container:AddColorPicker(id, info)
 				valueLabel.Text = tostring(current[i])
 				apply()
 			end
-			track(bar.InputBegan:Connect(function(input)
+			trackPopup(bar.InputBegan:Connect(function(input)
 				if input.UserInputType == Enum.UserInputType.MouseButton1 then
 					setFrom(input)
 				end
 			end))
-			track(bar.InputChanged:Connect(function(input)
+			trackPopup(bar.InputChanged:Connect(function(input)
 				if
 					input.UserInputType == Enum.UserInputType.MouseMovement
 					and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
@@ -1640,7 +1724,7 @@ function Container:AddColorPicker(id, info)
 		})
 		corner(preview, 2)
 		stroke(preview)
-		track(hexBox.FocusLost:Connect(function()
+		trackPopup(hexBox.FocusLost:Connect(function()
 			local hex = tostring(hexBox.Text):gsub("#", "")
 			if #hex == 6 then
 				local r = tonumber(hex:sub(1, 2), 16)
@@ -1705,7 +1789,8 @@ end
 
 function Library:AddToRegistry(object, properties)
 	local data = { Instance = object, Properties = properties }
-	table.insert(self.Registry, data)
+	-- Weak-keyed: dead instances are collected rather than pinned forever.
+	self.Registry[object] = data
 	self.RegistryMap[object] = data
 end
 
@@ -2602,6 +2687,7 @@ function Library:CreateWindow(config)
 			selectModule(module)
 		end))
 		attachSheen(card)
+		attachHoverGlow(card)
 		track(card.MouseEnter:Connect(function()
 			hovered = true
 			refreshTitle()
@@ -2639,7 +2725,7 @@ end
 local function serializeControls(ignore)
 	local data = {}
 	for id, control in next, Toggles do
-		if not ignore[id] then
+		if not ignore[id] and not tostring(id):match("^UI_") then
 			data[id] = { type = "toggle", value = control.Value == true }
 		end
 	end
@@ -3056,22 +3142,24 @@ function Library:ApplyTheme(partial, skipSave)
 	self.OutlineColor = theme.Outline
 	self.Font = theme.Font
 
-	for _, entry in next, self.ThemeRegistry do
-		local object, property, role, base = entry[1], entry[2], entry[3], entry[4]
-		pcall(function()
-			if property == "BackgroundTransparency" then
-				object.BackgroundTransparency = theme[TRANSPARENCY_KEYS[role]] or 0
-			elseif role == "Font" then
-				object.Font = theme.Font
-			elseif role == "TextScale" then
-				object.TextSize = math.max(1, math.floor(base * theme.TextScale + 0.5))
-			else
-				object[property] = theme[role]
-			end
-		end)
+	for object, entries in next, self.ThemeRegistry do
+		for _, entry in next, entries do
+			local property, role, base = entry[1], entry[2], entry[3]
+			pcall(function()
+				if property == "BackgroundTransparency" then
+					object.BackgroundTransparency = theme[TRANSPARENCY_KEYS[role]] or 0
+				elseif role == "Font" then
+					object.Font = theme.Font
+				elseif role == "TextScale" then
+					object.TextSize = math.max(1, math.floor(base * theme.TextScale + 0.5))
+				else
+					object[property] = theme[role]
+				end
+			end)
+		end
 	end
 
-	for _, titleLabel in next, self.TitleLabels do
+	for titleLabel in next, self.TitleLabels do
 		pcall(function()
 			local family = FONT_FAMILIES[tostring(theme.Font.Name)] or "RobotoMono"
 			titleLabel.FontFace =
@@ -3107,6 +3195,14 @@ function Library:ApplyTheme(partial, skipSave)
 	else
 		self:_syncBlur()
 	end
+	if theme.HoverGlowEnabled == false then
+		for glow in next, self._hoverGlows do
+			pcall(function()
+				glow.Transparency = 1
+			end)
+		end
+	end
+
 	rebuildKeybindList()
 
 	if not skipSave then
@@ -3144,6 +3240,9 @@ function Library:SaveTheme()
 		screenBlur = theme.ScreenBlur,
 		blurSize = theme.BlurSize,
 		animations = theme.Animations,
+		hoverGlow = theme.HoverGlow
+			and { r = to255(theme.HoverGlow.R), g = to255(theme.HoverGlow.G), b = to255(theme.HoverGlow.B) },
+		hoverGlowEnabled = theme.HoverGlowEnabled ~= false,
 	}
 	pcall(function()
 		if not f.isfolder(folder) then
@@ -3192,6 +3291,13 @@ function Library:LoadTheme()
 	partial.ScreenBlur = data.screenBlur == true
 	partial.BlurSize = tonumber(data.blurSize)
 	partial.Animations = data.animations ~= false
+	if type(data.hoverGlow) == "table" then
+		partial.HoverGlow =
+			Color3.fromRGB(data.hoverGlow.r or 0, data.hoverGlow.g or 0, data.hoverGlow.b or 0)
+	end
+	if data.hoverGlowEnabled ~= nil then
+		partial.HoverGlowEnabled = data.hoverGlowEnabled == true
+	end
 	self._activePreset = data.preset
 	self:ApplyTheme(partial, true)
 	return data
@@ -3273,6 +3379,25 @@ function Library:AddThemeModule(tab, opts)
 		Callback = function(color)
 			Library._activePreset = nil
 			Library:ApplyTheme({ Sheen = color })
+		end,
+	})
+
+	module:AddToggle("UI_HoverGlowEnabled", {
+		Text = "Hover Glow",
+		Tooltip = "Subtle outline that fades in around hovered cards.",
+		Default = self.Theme.HoverGlowEnabled ~= false,
+		Callback = function(on)
+			Library:ApplyTheme({ HoverGlowEnabled = on == true })
+		end,
+	})
+
+	module:AddColorPicker("UI_HoverGlowColor", {
+		Text = "Hover Glow Color",
+		Tooltip = "Color of the outline that appears around hovered cards.",
+		Default = self.Theme.HoverGlow,
+		Callback = function(color)
+			Library._activePreset = nil
+			Library:ApplyTheme({ HoverGlow = color })
 		end,
 	})
 
