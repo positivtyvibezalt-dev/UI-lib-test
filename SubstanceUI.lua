@@ -2748,7 +2748,10 @@ end
 
 local function deserializeControls(data, ignore)
 	for id, entry in next, data or {} do
-		if not ignore[id] then
+		-- UI_-prefixed controls are excluded from serialization; skip them here
+		-- too so stale configs saved before the exclusion can't resurrect them
+		-- (e.g. an old "UI_Animations": false would silently kill all tweens).
+		if not ignore[id] and not tostring(id):match("^UI_") then
 			local control = Toggles[id] or Options[id]
 			if control and type(entry) == "table" then
 				local value = entry.value
