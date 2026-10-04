@@ -590,33 +590,9 @@ Library._hoverGlows = setmetatable({}, { __mode = "k" })
 
 local resolveAsset, resolveIcon -- defined in the theme section; used by AddTab + hover glow
 
-local glowLayer = nil
 local glowAsset = nil
 local glowAssetTried = false
 local glowLoopConn = nil
-
-local function ensureGlowLayer()
-	if glowLayer then
-		if glowLayer.Parent == Library.ScreenGui then
-			return glowLayer
-		end
-		-- Stale after unload/reload; drop it so a fresh layer is made.
-		glowLayer = nil
-	end
-	local gui = Library.ScreenGui
-	if not gui then
-		return nil
-	end
-	glowLayer = create("Frame", {
-		Name = "HoverGlowLayer",
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 90, -- above window content, below popups (99+)
-		Parent = gui,
-	})
-	return glowLayer
-end
 
 local function getGlowAsset()
 	if not glowAssetTried then
@@ -626,20 +602,10 @@ local function getGlowAsset()
 	return glowAsset
 end
 
----True while `inst` and every ancestor up to the ScreenGui are Visible.
-local function glowShown(inst)
-	local p = inst
-	while p and p ~= Library.ScreenGui do
-		if p.Visible == false then
-			return false
-		end
-		p = p.Parent
-	end
-	return p == Library.ScreenGui
-end
-
----One render connection drives every glow: eased fade + a gentle outward
----ripple while hovered, with the halo locked to the card's absolute bounds.
+---One render connection drives every glow. Hover fades the halo in while the
+---ring eases outward from the center to the card edge (the ripple); leaving
+---fades it back out. The image is a child of the card, so hiding, scrolling,
+---or destroying the card takes the glow with it.
 local function ensureGlowLoop()
 	if glowLoopConn then
 		if glowLoopConn.Connected ~= false then
@@ -648,10 +614,6 @@ local function ensureGlowLoop()
 		glowLoopConn = nil -- disconnected on unload; reconnect below
 	end
 	glowLoopConn = track(RunService.RenderStepped:Connect(function(dt)
-		if not glowLayer then
-			return
-		end
-		local lx, ly = glowLayer.AbsolutePosition.X, glowLayer.AbsolutePosition.Y
 		for glow, st in next, Library._hoverGlows do
 			if type(st) == "table" then
 				pcall(function()
@@ -661,42 +623,35 @@ local function ensureGlowLoop()
 						Library._hoverGlows[glow] = nil
 						return
 					end
-					local target = (st.hovered
-						and glowShown(card)
-						and Library.Theme.HoverGlowEnabled ~= false) and 1 or 0
-					st.alpha = st.alpha + (target - st.alpha) * math.min(dt * 10, 1)
+					local target = (st.hovered and Library.Theme.HoverGlowEnabled ~= false) and 1 or 0
+					st.alpha = st.alpha + (target - st.alpha) * math.min(dt * 8, 1)
 					if st.alpha <= 0.02 then
 						glow.Visible = false
 						st.t = 0
 						return
 					end
 					st.t = st.t + dt
-					local ripple = st.hovered and (math.sin(st.t * 2.2) + 1) * 0.025 or 0
-					local cs = card.AbsoluteSize
-					local cp = card.AbsolutePosition
-					-- Ring peaks at ~0.68 of the sprite's half-size, so scaling
-					-- ~1.47x lands the halo band on the card's border.
-					local scale = 1.47 + ripple
-					local w, h = cs.X * scale, cs.Y * scale
+					-- Ripple: ring eases from ~center out to the card edge, then
+					-- settles into a subtle breathe.
+					local w = math.min(st.t / 0.55, 1)
+					local ease = 1 - (1 - w) * (1 - w) * (1 - w)
+					local scale = 0.55 + ease * 0.7 + math.sin(st.t * 2) * 0.015
 					glow.Visible = true
-					glow.Size = UDim2.fromOffset(w, h)
-					glow.Position = UDim2.fromOffset(
-						cp.X - lx + (cs.X - w) / 2,
-						cp.Y - ly + (cs.Y - h) / 2
-					)
-					glow.ImageTransparency = 1 - st.alpha * 0.8
+					glow.Size = UDim2.fromScale(scale, scale)
+					glow.ImageTransparency = 1 - st.alpha * 0.85
 				end)
 			end
 		end
 	end))
 end
 
----Subtle editable-color halo that fades in around a card while hovered.
+---Soft radial halo that ripples out to the card edges on hover. Returns true
+---when the halo was attached so callers can skip the legacy sheen; falls back
+---to a thin border stroke (and false) when image assets are unavailable.
 local function attachHoverGlow(card)
 	local asset = getGlowAsset()
-	local layer = ensureGlowLayer()
 
-	if not (asset and layer) then
+	if not asset then
 		-- Fallback: thin border stroke when image assets are unavailable.
 		local glow = create("UIStroke", {
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
@@ -716,19 +671,27 @@ local function attachHoverGlow(card)
 		track(card.MouseLeave:Connect(function()
 			tween(glow, 0.3, { Transparency = 1 })
 		end))
-		return
+		return false
 	end
+
+	-- Clip so the halo can't bleed outside the card (also inherits hiding).
+	pcall(function()
+		card.ClipsDescendants = true
+	end)
 
 	local glow = create("ImageLabel", {
 		Active = false,
+		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Image = asset,
 		ImageColor3 = th("HoverGlow") or ACCENT,
 		ImageTransparency = 1,
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
 		Visible = false,
-		ZIndex = 90,
-		Parent = layer,
+		ZIndex = 1,
+		Parent = card,
 	})
 	tprop(glow, "ImageColor3", "HoverGlow")
 
@@ -737,11 +700,13 @@ local function attachHoverGlow(card)
 
 	track(card.MouseEnter:Connect(function()
 		st.hovered = true
+		st.t = 0 -- replay the wave from the center every hover
 	end))
 	track(card.MouseLeave:Connect(function()
 		st.hovered = false
 	end))
 	ensureGlowLoop()
+	return true
 end
 
 ---Format a KeyCode-ish name for badges: RightShift -> "RIGHT SHIFT", MouseButton1 -> "MB1".
@@ -1057,8 +1022,9 @@ function Container:_card(areaHeight, title, description)
 	if self._placeholder then
 		self._placeholder.Visible = false
 	end
-	attachSheen(card)
-	attachHoverGlow(card)
+	if not attachHoverGlow(card) then
+		attachSheen(card)
+	end
 	if titleLabel then
 		track(card.MouseEnter:Connect(function()
 			tween(titleLabel, 0.18, { TextColor3 = th("Accent") })
@@ -2824,8 +2790,9 @@ function Library:CreateWindow(config)
 		track(card.MouseButton1Click:Connect(function()
 			selectModule(module)
 		end))
-		attachSheen(card)
-		attachHoverGlow(card)
+		if not attachHoverGlow(card) then
+			attachSheen(card)
+		end
 		track(card.MouseEnter:Connect(function()
 			hovered = true
 			refreshTitle()
