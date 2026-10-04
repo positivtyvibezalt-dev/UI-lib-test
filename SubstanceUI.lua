@@ -4,6 +4,7 @@
 
 local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
@@ -583,29 +584,164 @@ local function attachSheen(card)
 	end))
 end
 
----Weak-keyed set of every hover-glow stroke so the toggle can hide them all.
+---Weak-keyed map of hover-glow images -> state { card, alpha, hovered, t }.
+---Fallback entries (UIStroke) map to `true`.
 Library._hoverGlows = setmetatable({}, { __mode = "k" })
 
----Subtle editable-color outline that fades in around a card while hovered.
-local function attachHoverGlow(card)
-	local glow = create("UIStroke", {
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Color = th("HoverGlow") or ACCENT,
-		Thickness = 1.5,
-		Transparency = 1,
-		Parent = card,
+local resolveAsset, resolveIcon -- defined in the theme section; used by AddTab + hover glow
+
+local glowLayer = nil
+local glowAsset = nil
+local glowAssetTried = false
+local glowLoopConn = nil
+
+local function ensureGlowLayer()
+	if glowLayer then
+		if glowLayer.Parent == Library.ScreenGui then
+			return glowLayer
+		end
+		-- Stale after unload/reload; drop it so a fresh layer is made.
+		glowLayer = nil
+	end
+	local gui = Library.ScreenGui
+	if not gui then
+		return nil
+	end
+	glowLayer = create("Frame", {
+		Name = "HoverGlowLayer",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 90, -- above window content, below popups (99+)
+		Parent = gui,
 	})
-	tprop(glow, "Color", "HoverGlow")
-	Library._hoverGlows[glow] = true
-	track(card.MouseEnter:Connect(function()
-		if Library.Theme.HoverGlowEnabled == false then
+	return glowLayer
+end
+
+local function getGlowAsset()
+	if not glowAssetTried then
+		glowAssetTried = true
+		glowAsset = resolveIcon("hoverglow")
+	end
+	return glowAsset
+end
+
+---True while `inst` and every ancestor up to the ScreenGui are Visible.
+local function glowShown(inst)
+	local p = inst
+	while p and p ~= Library.ScreenGui do
+		if p.Visible == false then
+			return false
+		end
+		p = p.Parent
+	end
+	return p == Library.ScreenGui
+end
+
+---One render connection drives every glow: eased fade + a gentle outward
+---ripple while hovered, with the halo locked to the card's absolute bounds.
+local function ensureGlowLoop()
+	if glowLoopConn then
+		if glowLoopConn.Connected ~= false then
 			return
 		end
-		tween(glow, 0.22, { Transparency = 0.35 })
+		glowLoopConn = nil -- disconnected on unload; reconnect below
+	end
+	glowLoopConn = track(RunService.RenderStepped:Connect(function(dt)
+		if not glowLayer then
+			return
+		end
+		local lx, ly = glowLayer.AbsolutePosition.X, glowLayer.AbsolutePosition.Y
+		for glow, st in next, Library._hoverGlows do
+			if type(st) == "table" then
+				pcall(function()
+					local card = st.card
+					if card.Parent == nil then
+						glow:Destroy()
+						Library._hoverGlows[glow] = nil
+						return
+					end
+					local target = (st.hovered
+						and glowShown(card)
+						and Library.Theme.HoverGlowEnabled ~= false) and 1 or 0
+					st.alpha = st.alpha + (target - st.alpha) * math.min(dt * 10, 1)
+					if st.alpha <= 0.02 then
+						glow.Visible = false
+						st.t = 0
+						return
+					end
+					st.t = st.t + dt
+					local ripple = st.hovered and (math.sin(st.t * 2.2) + 1) * 0.025 or 0
+					local cs = card.AbsoluteSize
+					local cp = card.AbsolutePosition
+					-- Ring peaks at ~0.68 of the sprite's half-size, so scaling
+					-- ~1.47x lands the halo band on the card's border.
+					local scale = 1.47 + ripple
+					local w, h = cs.X * scale, cs.Y * scale
+					glow.Visible = true
+					glow.Size = UDim2.fromOffset(w, h)
+					glow.Position = UDim2.fromOffset(
+						cp.X - lx + (cs.X - w) / 2,
+						cp.Y - ly + (cs.Y - h) / 2
+					)
+					glow.ImageTransparency = 1 - st.alpha * 0.8
+				end)
+			end
+		end
+	end))
+end
+
+---Subtle editable-color halo that fades in around a card while hovered.
+local function attachHoverGlow(card)
+	local asset = getGlowAsset()
+	local layer = ensureGlowLayer()
+
+	if not (asset and layer) then
+		-- Fallback: thin border stroke when image assets are unavailable.
+		local glow = create("UIStroke", {
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Color = th("HoverGlow") or ACCENT,
+			Thickness = 1.5,
+			Transparency = 1,
+			Parent = card,
+		})
+		tprop(glow, "Color", "HoverGlow")
+		Library._hoverGlows[glow] = true
+		track(card.MouseEnter:Connect(function()
+			if Library.Theme.HoverGlowEnabled == false then
+				return
+			end
+			tween(glow, 0.22, { Transparency = 0.35 })
+		end))
+		track(card.MouseLeave:Connect(function()
+			tween(glow, 0.3, { Transparency = 1 })
+		end))
+		return
+	end
+
+	local glow = create("ImageLabel", {
+		Active = false,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Image = asset,
+		ImageColor3 = th("HoverGlow") or ACCENT,
+		ImageTransparency = 1,
+		Visible = false,
+		ZIndex = 90,
+		Parent = layer,
+	})
+	tprop(glow, "ImageColor3", "HoverGlow")
+
+	local st = { card = card, alpha = 0, hovered = false, t = 0 }
+	Library._hoverGlows[glow] = st
+
+	track(card.MouseEnter:Connect(function()
+		st.hovered = true
 	end))
 	track(card.MouseLeave:Connect(function()
-		tween(glow, 0.3, { Transparency = 1 })
+		st.hovered = false
 	end))
+	ensureGlowLoop()
 end
 
 ---Format a KeyCode-ish name for badges: RightShift -> "RIGHT SHIFT", MouseButton1 -> "MB1".
@@ -645,8 +781,6 @@ local function fs()
 		delfile = env.delfile or _G.delfile,
 	}
 end
-
-local resolveAsset, resolveIcon -- defined in the theme section; used by AddTab
 
 --------------------------------------------------------------------------------
 -- Control base
@@ -3015,6 +3149,7 @@ local ICON_DATA = {
 	friends = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAW0lEQVR42u2VWwoAIAgEvf+l7T8MTHyz81mwDoZGBMBUWKC0eJoEK0gpbrnfLxAugSeQpuB1tncPtNiEt0iLfyClC/xBaXF3CW14iIQl0FXCGuTehTEjCgAYxwEsswIbrzojkwAAAABJRU5ErkJggg==",
 	config = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAN0lEQVR42u3TwREAMAQAQf03TQX5IR67DTDDRQA85ICvw08s0X4WjypDGa5nKFUZyvBUhnKDLgVkgjjyjOE6gQAAAABJRU5ErkJggg==",
 	script = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAO0lEQVR42u3VsQ0AIAhFQfZfGhsrOwqUmLsF/msIEQCT5fY8QIQIEaMi8mDc+L/jlXPLgpZ33BYA3LAA3RYm6A8IoacAAAAASUVORK5CYII=",
+	hoverglow = "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",
 }
 
 local function b64decode(data)
@@ -3203,10 +3338,17 @@ function Library:ApplyTheme(partial, skipSave)
 		self:_syncBlur()
 	end
 	if theme.HoverGlowEnabled == false then
-		for glow in next, self._hoverGlows do
+		for glow, st in next, self._hoverGlows do
 			pcall(function()
-				glow.Transparency = 1
+				if glow:IsA("UIStroke") then
+					glow.Transparency = 1
+				else
+					glow.ImageTransparency = 1
+				end
 			end)
+			if type(st) == "table" then
+				st.alpha = 0
+			end
 		end
 	end
 
