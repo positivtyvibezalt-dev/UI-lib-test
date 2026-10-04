@@ -2031,7 +2031,7 @@ function Library:CreateWindow(config)
 		VerticalAlignment = Enum.VerticalAlignment.Center,
 		Parent = meta,
 	})
-	mklabel(meta, {
+	local userLabel = mklabel(meta, {
 		AutomaticSize = Enum.AutomaticSize.X,
 		LayoutOrder = 1,
 		Size = UDim2.fromOffset(0, 46),
@@ -2047,7 +2047,7 @@ function Library:CreateWindow(config)
 		TextColor3 = ACCENT,
 		TextSize = 11,
 	})
-	mklabel(meta, {
+	local uidLabel = mklabel(meta, {
 		AutomaticSize = Enum.AutomaticSize.X,
 		LayoutOrder = 3,
 		Size = UDim2.fromOffset(0, 46),
@@ -2178,9 +2178,17 @@ function Library:CreateWindow(config)
 	})
 
 	local window = { Tabs = {}, Outer = outer, Modules = {}, ActiveTab = nil, SettingsHint = settingsHint }
+	local updateSearchPlaceholder
 
-	local function updateSearchPlaceholder()
-		local user = tostring(config.User or (localPlayer and localPlayer.Name) or "user"):lower():gsub("%s", "-")
+	function window:SetIdentity(user, uid)
+		self.DisplayUser = user
+		userLabel.Text = tostring(user or "user")
+		uidLabel.Text = "UID: " .. tostring(uid or 0)
+		updateSearchPlaceholder()
+	end
+
+	function updateSearchPlaceholder()
+		local user = tostring(window.DisplayUser or config.User or (localPlayer and localPlayer.Name) or "user"):lower():gsub("%s", "-")
 		local path = ""
 		local selected = window.SelectedModule
 		if selected then
