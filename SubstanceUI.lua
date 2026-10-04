@@ -35,6 +35,10 @@ local Toggles, Options = {}, {}
 env.Toggles, env.Options = Toggles, Options
 
 local Library = {
+	-- Capability marker: NewUAPB's loadLibraries() refuses stale/incompatible
+	-- builds that lack the module-card API (e.g. an old SubstanceUI or a
+	-- Linoria-style lib sitting in the workspace under this filename).
+	API_VERSION = 2,
 	FontColor = TEXT,
 	MainColor = PANEL,
 	BackgroundColor = BG,
